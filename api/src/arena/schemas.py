@@ -323,6 +323,10 @@ class CatalogEntry(BaseModel):
     set: str | None = None
     rarity: int | None = None
     boss: bool | None = None
+    pos: list[int] | None = Field(None, description="the sprite's cell in its atlas, [x, y]")
+    soul: list[int] | None = Field(
+        None, description="the cell of a floating layer drawn over it (legendary jokers)"
+    )
 
 
 class Catalog(BaseModel):
@@ -330,6 +334,7 @@ class Catalog(BaseModel):
     centers: dict[str, CatalogEntry]
     blinds: dict[str, CatalogEntry]
     tags: dict[str, CatalogEntry]
+    stakes: dict[str, CatalogEntry] = Field(description="by stake level, 1 (White) to 8 (Gold)")
 
 
 # --- account -----------------------------------------------------------------------------------

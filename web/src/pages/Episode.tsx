@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router";
 import { ApiError } from "../api/client";
 import { useEpisode, useTracks } from "../api/hooks";
+import { DeckBack } from "../art/art";
 import { ReplayViewer } from "../components/replay/ReplayViewer";
 import { endReason } from "../lib/format";
 
@@ -23,7 +24,8 @@ export function EpisodePage() {
   if (!ep) return <p className="error">The episode couldn't load.</p>;
 
   const final = ep?.final;
-  const trackName = tracks?.find((t) => t.key === ep.track)?.name ?? ep.track;
+  const track = tracks?.find((t) => t.key === ep.track);
+  const trackName = track?.name ?? ep.track;
 
   return (
     <>
@@ -67,7 +69,11 @@ export function EpisodePage() {
         </section>
       )}
 
-      {final && <ReplayViewer episodeId={id} mine={mine} />}
+      {final && (
+        <DeckBack.Provider value={track?.back ?? "b_red"}>
+          <ReplayViewer episodeId={id} mine={mine} />
+        </DeckBack.Provider>
+      )}
     </>
   );
 }
@@ -76,9 +82,7 @@ function Tile({ label, value }: { label: string; value: string }) {
   return (
     <div className="tile">
       <div className="label">{label}</div>
-      <div className="value" style={{ fontSize: "1.25rem" }}>
-        {value}
-      </div>
+      <div className="value">{value}</div>
     </div>
   );
 }

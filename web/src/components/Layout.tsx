@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { useMe, useProviders, useSignOut } from "../api/hooks";
+import { useArt } from "../art/art";
 
 export function signInHref(provider: string, next: string): string {
   return `/auth/login/${encodeURIComponent(provider)}?next=${encodeURIComponent(next)}`;
@@ -30,6 +31,7 @@ function SignIn() {
 export function Layout({ children }: { children: ReactNode }) {
   const { data: me } = useMe();
   const signOut = useSignOut();
+  const art = useArt();
   return (
     <div className="shell">
       <header className="header">
@@ -69,7 +71,9 @@ export function Layout({ children }: { children: ReactNode }) {
           </span>
           <a href="https://github.com/TylerFlar/jackdaw-arena">Source</a>
           <a href="/api/docs">API</a>
-          <span>Not affiliated with LocalThunk or Playstack.</span>
+          <span>
+            Not affiliated with LocalThunk or Playstack.{art && ` ${art.credit}`}
+          </span>
         </div>
       </footer>
     </div>

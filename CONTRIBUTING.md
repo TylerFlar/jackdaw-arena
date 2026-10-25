@@ -75,6 +75,17 @@ Terraform creates the resources, and `infra/scripts/deploy.py` releases code int
 
 Function settings changed in Terraform (memory, environment) take effect at the next release, when a new version is published.
 
+## Game art
+
+The site draws cards, jokers, blinds and tags with Balatro's own sprites, and headings in its font. They belong to LocalThunk (the font is Daniel Linssen's m6x11), so they're never committed: `web/.art/` is ignored, and builds don't include it. Without them, the site draws plain cards.
+
+```bash
+uv run infra/scripts/extract_art.py ".../steamapps/common/Balatro/Balatro.exe"   # into web/.art/v1/
+uv run infra/scripts/upload_art.py              # to the site's bucket, under art/
+```
+
+`pnpm dev` serves `web/.art/` at `/art/`. The files are cached for good, so changed files go in a new folder: bump `VERSION` in `extract_art.py` and `ART_ROOT` in `web/src/art/art.ts`.
+
 ## Upgrading jackdaw
 
 The API pins one jackdaw release in `api/pyproject.toml`: the version, and the release's five wheel URLs. Each episode records the release that played it, and belongs to a season: the releases that play the same game, listed in `api/src/arena/engine/spec.py`. The API won't start on a release its season doesn't list.

@@ -53,6 +53,21 @@ export function frame(i: number, over: Partial<Frame> = {}): Frame {
   }; // prettier-ignore
 }
 
+const atlas = (file: string, cols: number, rows: number, w = 142, h = 190) => ({
+  file, cell: [w, h], size: [cols * w, rows * h],
+}); // prettier-ignore
+
+/** What infra/scripts/extract_art.py writes, for tests of the art path. */
+export const artManifest = {
+  version: 1, game: "1.0.1o", font: "m6x11plus.ttf", credit: "Balatro art © LocalThunk.",
+  atlases: {
+    cards: atlas("cards.png", 13, 4), centers: atlas("centers.png", 7, 5), jokers: atlas("jokers.png", 10, 16),
+    tarots: atlas("tarots.png", 10, 6), vouchers: atlas("vouchers.png", 9, 4), boosters: atlas("boosters.png", 4, 9),
+    stickers: atlas("stickers.png", 5, 3), tags: atlas("tags.png", 6, 5, 68, 68),
+    stakes: atlas("stakes.png", 5, 2, 58, 58), blinds: atlas("blinds.png", 1, 31, 68, 68),
+  },
+}; // prettier-ignore
+
 export const me: MeDoc = {
   user: { login: "ada", name: "Ada", avatar_url: null, is_admin: false },
   agents: [{
@@ -76,6 +91,8 @@ export const handlers = [
     HttpResponse.json({ engine_version: "0.2.0", centers: { j_joker: { name: "Joker", set: "Joker", rarity: 1 } },
       blinds: { bl_small: { name: "Small Blind", boss: false } }, tags: {} }),  // prettier-ignore
   ),
+  // No art by default: the site draws plain cards, as it does in CI and on forks.
+  http.get(url("/art/v1/manifest.json"), () => new HttpResponse(null, { status: 404 })),
   http.get(url("/api/episodes/:id/frames"), ({ request }) => {
     const from = Number(new URL(request.url).searchParams.get("from") ?? 0);
     const frames = [0, 1, 2, 3].filter((i) => i >= from).map((i) => frame(i));

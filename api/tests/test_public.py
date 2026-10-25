@@ -157,6 +157,10 @@ def test_catalog_and_tracks(client):
     cat = client.get("/api/catalog").json()
     assert cat["centers"]["j_joker"]["name"] == "Joker"
     assert cat["blinds"]["bl_hook"]["name"] == "The Hook"
+    caino = cat["centers"]["j_caino"]
+    assert caino["pos"] == [3, 8] and caino["soul"] == [3, 9]  # a legendary's floating face
+    assert cat["centers"]["b_red"]["pos"] == [0, 0] and cat["tags"]["tag_boss"]["pos"] == [0, 2]
+    assert cat["stakes"]["1"]["name"] == "White Stake" and cat["stakes"]["4"]["pos"] == [4, 0]
     tracks = client.get("/api/tracks").json()
     assert tracks[0]["key"] == "red-1" and tracks[0]["episodes_per_agent"] == 500
 

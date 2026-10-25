@@ -26,6 +26,14 @@
   --radius: 10px;
   --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: var(--sans);
+  --money: #8a6100;
+  --card-w: 71px;
+}
+
+/* Balatro's pixel font, once the site's art has loaded it. */
+:root[data-font="game"] {
+  --display: "m6x11", var(--sans);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -50,6 +58,7 @@
     --card-face: #f4f3ee;
     --focus: #6da7ec;
     --shadow: none;
+    --money: #f3b958;
   }
 }
 
@@ -74,6 +83,7 @@
   --card-face: #f4f3ee;
   --focus: #6da7ec;
   --shadow: none;
+  --money: #f3b958;
 }
 
 *,
@@ -543,7 +553,7 @@ table.board {
   stroke-width: 1;
 }
 
-/* --- cards (no game art: plain CSS) ----------------------------------------------------------- */
+/* --- cards without the game's art: plain CSS -------------------------------------------------- */
 
 .cards {
   display: flex;
@@ -668,6 +678,115 @@ table.board {
 }
 .item.Booster {
   border-left: 3px solid #898781;
+}
+
+/* --- game art (only when the site has it) ------------------------------------------------------ */
+
+.sprite {
+  display: block;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+.gslot {
+  display: inline-grid;
+  justify-items: center;
+  align-content: start;
+  gap: 3px;
+}
+.gslot > a {
+  display: block;
+}
+.gcard {
+  position: relative;
+  display: block;
+  width: var(--card-w);
+  aspect-ratio: 71 / 95;
+}
+.gcard > .sprite {
+  position: absolute;
+  inset: 0;
+}
+.gcard.wee {
+  width: calc(var(--card-w) * 0.7);
+}
+.gcard.pending {
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+.gcard > .soul {
+  animation: soul-float 3s ease-in-out infinite;
+}
+@keyframes soul-float {
+  50% {
+    transform: translateY(-4%);
+  }
+}
+/* Editions are shaders in the game: these only suggest them. */
+.gcard.ed-foil {
+  filter: saturate(0.6) brightness(1.06) drop-shadow(0 0 2px #6fa8ff);
+}
+.gcard.ed-holo {
+  filter: saturate(1.25) drop-shadow(0 0 2px #ff6fae);
+}
+.gcard.ed-polychrome {
+  animation: polychrome 6s linear infinite;
+}
+@keyframes polychrome {
+  from {
+    filter: saturate(1.5) hue-rotate(0deg) drop-shadow(0 0 2px #2ad19a);
+  }
+  to {
+    filter: saturate(1.5) hue-rotate(360deg) drop-shadow(0 0 2px #2ad19a);
+  }
+}
+.gcard.ed-negative {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gcard > .soul,
+  .gcard.ed-polychrome {
+    animation: none;
+  }
+}
+.price {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--money);
+}
+.icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+.icon.blinds,
+.icon.tags {
+  width: 34px;
+  height: 34px;
+}
+.icon.stakes {
+  width: 29px;
+  height: 29px;
+}
+.brand,
+h1,
+.tile .value,
+.statline .v,
+.score {
+  font-family: var(--display);
+}
+/* m6x11 has one weight, and is crisp at 16px and its multiples. */
+:root[data-font="game"] :is(.brand, h1, .tile .value, .statline .v, .score, .price) {
+  font-weight: 400;
+  font-synthesis: none;
+}
+:root[data-font="game"] :is(.brand, .statline .v, .score, .price) {
+  font-size: 16px;
+}
+:root[data-font="game"] :is(h1, .tile .value) {
+  font-size: 32px;
+  line-height: 1;
 }
 
 /* --- replay ---------------------------------------------------------------------------------- */

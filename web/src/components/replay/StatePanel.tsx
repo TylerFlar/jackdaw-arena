@@ -1,4 +1,6 @@
+import { useNames } from "../../api/catalog";
 import type { Frame } from "../../api/client";
+import { Icon } from "../../art/Icon";
 import { num } from "../../lib/format";
 import { CardRow } from "../PlayingCard";
 
@@ -13,6 +15,7 @@ const PHASES: Record<string, string> = {
 
 export function StatePanel({ frame }: { frame: Frame }) {
   const f = frame;
+  const names = useNames();
   return (
     <div>
       <div className="statline">
@@ -25,10 +28,11 @@ export function StatePanel({ frame }: { frame: Frame }) {
         <Stat k="Deck" v={f.deck_size} />
       </div>
 
-      {f.blind && f.phase !== "blind_select" && (
+      {f.blind?.key && f.phase !== "blind_select" && (
         <div className="zone">
           <h3>Blind</h3>
           <div className="row">
+            <Icon atlas="blinds" entry={names.info(f.blind.key)} />
             <strong>{f.blind.name}</strong>
             {f.blind.boss && <span className="badge">boss</span>}
             {f.blind.disabled && <span className="badge">disabled</span>}
@@ -48,9 +52,18 @@ export function StatePanel({ frame }: { frame: Frame }) {
               if (!b) return null;
               return (
                 <div key={slot} className={`blind ${b.status ?? ""}`}>
-                  <strong>{b.name}</strong>
-                  <div className="muted small">
-                    {num(b.score)} chips{b.tag && ` · skip: ${b.tag}`}
+                  <div className="row">
+                    <Icon atlas="blinds" entry={names.named("blinds", b.name)} />
+                    <strong>{b.name}</strong>
+                  </div>
+                  <div className="muted small row">
+                    {num(b.score)} chips
+                    {b.tag && (
+                      <>
+                        {" "}
+                        · skip: <Icon atlas="tags" entry={names.named("tags", b.tag)} /> {b.tag}
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -110,6 +123,7 @@ export function StatePanel({ frame }: { frame: Frame }) {
           <div className="row">
             {f.tags.map((t, i) => (
               <span key={i} className="badge">
+                <Icon atlas="tags" entry={names.info(t.key)} />
                 {t.name}
               </span>
             ))}

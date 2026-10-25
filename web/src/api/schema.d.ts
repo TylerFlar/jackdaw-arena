@@ -654,6 +654,13 @@ export interface components {
             };
             /** Engine Version */
             engine_version: string;
+            /**
+             * Stakes
+             * @description by stake level, 1 (White) to 8 (Gold)
+             */
+            stakes: {
+                [key: string]: components["schemas"]["CatalogEntry"];
+            };
             /** Tags */
             tags: {
                 [key: string]: components["schemas"]["CatalogEntry"];
@@ -665,10 +672,20 @@ export interface components {
             boss?: boolean | null;
             /** Name */
             name: string;
+            /**
+             * Pos
+             * @description the sprite's cell in its atlas, [x, y]
+             */
+            pos?: number[] | null;
             /** Rarity */
             rarity?: number | null;
             /** Set */
             set?: string | null;
+            /**
+             * Soul
+             * @description the cell of a floating layer drawn over it (legendary jokers)
+             */
+            soul?: number[] | null;
         };
         /** EpisodeCreate */
         EpisodeCreate: {

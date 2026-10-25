@@ -548,6 +548,14 @@
       "title": "Engine Version",
       "type": "string"
      },
+     "stakes": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/CatalogEntry"
+      },
+      "description": "by stake level, 1 (White) to 8 (Gold)",
+      "title": "Stakes",
+      "type": "object"
+     },
      "tags": {
       "additionalProperties": {
        "$ref": "#/components/schemas/CatalogEntry"
@@ -560,7 +568,8 @@
      "engine_version",
      "centers",
      "blinds",
-     "tags"
+     "tags",
+     "stakes"
     ],
     "title": "Catalog",
     "type": "object"
@@ -581,6 +590,21 @@
      "name": {
       "title": "Name",
       "type": "string"
+     },
+     "pos": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "integer"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the sprite's cell in its atlas, [x, y]",
+      "title": "Pos"
      },
      "rarity": {
       "anyOf": [
@@ -603,6 +627,21 @@
        }
       ],
       "title": "Set"
+     },
+     "soul": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "integer"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the cell of a floating layer drawn over it (legendary jokers)",
+      "title": "Soul"
      }
     },
     "required": [

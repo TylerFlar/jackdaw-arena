@@ -68,6 +68,7 @@ TYPES = {
     ".ico": "image/x-icon",
     ".txt": "text/plain; charset=utf-8",
     ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
     ".webmanifest": "application/manifest+json",
 }
 
