@@ -54,6 +54,8 @@ def _event(e: ScoreEvent) -> dict[str, Any]:
 def frame(game: Game, view: dict[str, Any]) -> dict[str, Any]:
     """The state, read from the run and from BalatroBot's view of it (``view``)."""
     blind = game.blind
+    if blind is not None and not blind.key:
+        blind = None  # between rounds the run's blind is cleared
     last = game.last_score
     pack = game._view("pack") if game.phase.value == "pack_opening" else None
     return {

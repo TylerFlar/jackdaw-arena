@@ -45,6 +45,9 @@ def test_replay_frames_follow_cards_and_explain_each_action(client):
         }
         ids = _ids(f)
         assert len(ids) == len(set(ids)), f"frame {f['i']}: an id twice"
+        # A blind between rounds is none, not a nameless one.
+        assert f["blind"] is None or f["blind"]["key"], f"frame {f['i']}: {f['blind']}"
+        assert f["blind"] is None or f["phase"] == "selecting_hand" or f["phase"] == "game_over"
         assert f["limits"]["hand"] >= 1 and f["deck_size"] == old["deck_size"]
     for f, nxt in zip(frames, frames[1:], strict=False):
         out = f["outcome"]

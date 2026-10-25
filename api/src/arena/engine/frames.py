@@ -60,6 +60,8 @@ def _blinds(raw: Any) -> dict[str, Any] | None:
 
 def frame(game: Game) -> dict[str, Any]:
     blind = game.blind
+    if blind is not None and not blind.key:
+        blind = None  # between rounds the run's blind is cleared
     last = game.last_score
     view = json.loads(game._g.bot_view())
     return {
