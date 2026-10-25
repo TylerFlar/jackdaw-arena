@@ -34,6 +34,7 @@ arena = "arena.cli:main"
 [dependency-groups]
 dev = [
     "httpx2>=2.16.0",
+    "jackdaw-arena",
     "pytest>=9.1",
     "respx>=0.22",
     "ruff>=0.17",
@@ -47,6 +48,8 @@ build-backend = "uv_build"
 module-name = "arena"
 
 [tool.uv.sources]
+# The client, for the cross-package tests (a real client against the real app).
+jackdaw-arena = { path = "../client", editable = true }
 # jackdaw isn't on PyPI: install the release's prebuilt abi3 wheels (no Rust toolchain needed).
 jackdaw = [
     { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-manylinux_2_28_x86_64.whl", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },

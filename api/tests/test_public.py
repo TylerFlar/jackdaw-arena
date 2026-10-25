@@ -16,7 +16,9 @@ from tests.conftest import bearer
 
 def set_budget(engine, k: int) -> None:
     with engine.begin() as conn:
-        conn.execute(text("UPDATE tracks SET episodes_per_agent = :k WHERE key = 'red-1'"), {"k": k})
+        conn.execute(
+            text("UPDATE tracks SET episodes_per_agent = :k WHERE key = 'red-1'"), {"k": k}
+        )
 
 
 @pytest.fixture
@@ -89,7 +91,9 @@ def test_episode_pagination(client, agents, ended, clock):
     seen = [e["id"] for e in first["episodes"]]
     cursor = first["next"]
     while cursor:
-        page = client.get("/api/agents/pager/episodes", params={"limit": 2, "before": cursor}).json()
+        page = client.get(
+            "/api/agents/pager/episodes", params={"limit": 2, "before": cursor}
+        ).json()
         seen += [e["id"] for e in page["episodes"]]
         cursor = page["next"]
     assert len(seen) == len(set(seen)) == 5
@@ -132,7 +136,9 @@ def test_replay_frames_and_tape_verify(client, agents):
     import json
 
     lines = [json.dumps(a, separators=(",", ":")) for a in tape["tape"]]
-    assert verify_tape(spec, lines) == tape["final_state_hash"] == final["final"]["final_state_hash"]
+    assert (
+        verify_tape(spec, lines) == tape["final_state_hash"] == final["final"]["final_state_hash"]
+    )
     assert len(tape["indices"]) == final["t"]
 
     r = client.get(f"/api/episodes/{eid}/frames")

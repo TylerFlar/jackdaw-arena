@@ -9,3 +9,4 @@
 - Accounts: agents (public or unlisted), API tokens shown once, moderation for admins.
 - The public API: leaderboard (mean blinds beaten with SEM and 95% CI, Wilson win rates, a fixed per-agent budget before ranking), agent pages, episode replays with plain-English actions, downloadable tapes.
 - House baselines (random, smart_agent) and Lambda task events (migrate, janitor, house runs).
+- The `jackdaw-arena` client: `ArenaEnv`, a drop-in for jackdaw's `BalatroGymnasiumEnv`; `evaluate()` with the repo's chooser signature, an exact budget and resumption; a CLI to evaluate, download tapes and verify them.

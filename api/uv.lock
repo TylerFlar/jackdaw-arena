@@ -121,6 +121,7 @@ aws = [
 [package.dev-dependencies]
 dev = [
     { name = "httpx2" },
+    { name = "jackdaw-arena" },
     { name = "pytest" },
     { name = "respx" },
     { name = "ruff" },
@@ -152,6 +153,7 @@ provides-extras = ["aws"]
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx2", specifier = ">=2.16.0" },
+    { name = "jackdaw-arena", editable = "../client" },
     { name = "pytest", specifier = ">=9.1" },
     { name = "respx", specifier = ">=0.22" },
     { name = "ruff", specifier = ">=0.17" },
@@ -839,6 +841,30 @@ wheels = [
 requires-dist = [
     { name = "gymnasium", specifier = ">=1.0" },
     { name = "numpy", specifier = ">=1.24" },
+]
+
+[[package]]
+name = "jackdaw-arena"
+version = "0.1.0"
+source = { editable = "../client" }
+dependencies = [
+    { name = "gymnasium" },
+    { name = "httpx" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "gymnasium", specifier = ">=1.0" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "numpy", specifier = ">=1.24" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.1" },
+    { name = "respx", specifier = ">=0.22" },
+    { name = "ruff", specifier = ">=0.17" },
 ]
 
 [[package]]

@@ -59,7 +59,9 @@ def test_only_the_owner_manages_an_agent(client, agents, sign_in):
     owner = agents.user("owner")
     agents.agent("theirs", user=owner)
     sign_in(client, agents.user("intruder"))
-    assert client.patch("/api/me/agents/theirs", json={"name": "x"}, headers=CSRF).status_code == 404
+    assert (
+        client.patch("/api/me/agents/theirs", json={"name": "x"}, headers=CSRF).status_code == 404
+    )
     assert client.post("/api/me/agents/theirs/tokens", json={}, headers=CSRF).status_code == 404
     assert client.get("/api/me/agents/theirs").status_code == 404
 
@@ -84,9 +86,15 @@ def test_unlisted_agents_are_private_to_their_owner(client, agents, sign_in, end
 def test_moderation_is_for_admins(client, agents, sign_in):
     agents.agent("spammy")
     sign_in(client, agents.user("someone"))
-    assert client.post("/api/admin/agents/spammy", json={"hidden": True}, headers=CSRF).status_code == 403
+    assert (
+        client.post("/api/admin/agents/spammy", json={"hidden": True}, headers=CSRF).status_code
+        == 403
+    )
     sign_in(client, agents.user("mod", admin=True))
-    assert client.post("/api/admin/agents/spammy", json={"hidden": True}, headers=CSRF).status_code == 200
+    assert (
+        client.post("/api/admin/agents/spammy", json={"hidden": True}, headers=CSRF).status_code
+        == 200
+    )
     assert client.get("/api/agents/spammy").status_code == 404
 
 

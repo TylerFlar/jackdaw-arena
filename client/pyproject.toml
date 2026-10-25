@@ -1,0 +1,48 @@
+[project]
+name = "jackdaw-arena"
+version = "0.1.0"
+description = "Evaluate Balatro agents on Jackdaw Arena: a Gymnasium env and an evaluate() over HTTP"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "Tyler Flar"}]
+dependencies = [
+    "gymnasium>=1.0",
+    "httpx>=0.27",
+    "numpy>=1.24",
+]
+
+[project.scripts]
+jackdaw-arena = "jackdaw_arena.cli:main"
+
+[project.urls]
+Homepage = "https://arena.tylerflar.com"
+Repository = "https://github.com/TylerFlar/jackdaw-arena"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "respx>=0.22",
+    "ruff>=0.17",
+]
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "jackdaw_arena"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--tb=short"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
