@@ -152,8 +152,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # Anonymous pulls from ECR Public on GitHub's shared runners keep hitting its data limit;
-      # logged in, they count against our account's allowance. (Fork PRs get no OIDC token.)
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         if: vars.AWS_CI_PULL_ROLE_ARN != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
@@ -190,8 +188,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # Anonymous pulls from ECR Public on GitHub's shared runners keep hitting its data limit;
-      # logged in, they count against our account's allowance. (Fork PRs get no OIDC token.)
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         if: vars.AWS_CI_PULL_ROLE_ARN != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
         with:

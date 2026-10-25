@@ -1,7 +1,3 @@
-# Offline tests of the stack's security and cost properties: `terraform test`. Both providers
-# are mocked (nothing reaches AWS, no credentials needed), and every run is a plan: mocked
-# values are known while planning, the way the real provider's are, so assertions can see them.
-
 mock_provider "aws" {
   override_during = plan
 
@@ -229,7 +225,6 @@ run "defaults" {
     error_message = "The arena cluster is backed up daily and kept a week."
   }
 
-  # --- defaults: cheap, no reservation, keep-warm on, no alerts ---
   assert {
     condition     = aws_lambda_function.api.reserved_concurrent_executions == -1
     error_message = "No reserved concurrency unless asked for."

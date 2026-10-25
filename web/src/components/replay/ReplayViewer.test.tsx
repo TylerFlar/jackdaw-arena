@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderAt } from "../../test/server";
 import { ReplayViewer } from "./ReplayViewer";
 
-const routes = [{ path: "/", element: <ReplayViewer episodeId="e1" total={4} /> }];
+const routes = [{ path: "/", element: <ReplayViewer episodeId="e1" /> }];
 
 describe("replay viewer", () => {
   it("steps with buttons, keys and the action log", async () => {

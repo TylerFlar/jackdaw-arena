@@ -14,7 +14,7 @@ resource "aws_ecr_lifecycle_policy" "api" {
   policy = jsonencode({
     rules = [{
       rulePriority = 1
-      description  = "Keep the last 5 images (rollback room, little storage)"
+      description  = "Keep the last 5 images, for rollbacks"
       selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 5 }
       action       = { type = "expire" }
     }]

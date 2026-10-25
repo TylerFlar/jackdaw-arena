@@ -7,12 +7,16 @@ const SPEEDS = [1, 2, 4, 8];
 
 /** Step through an ended episode: a scrubber, play/pause at 1-8 frames a second, the arrow
  * keys, and an action log you can click to jump. Frames load 200 at a time. */
-export function ReplayViewer({ episodeId, total, mine = false }: { episodeId: string; total: number; mine?: boolean }) {
+export function ReplayViewer({ episodeId, mine = false }: { episodeId: string; mine?: boolean }) {
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(2);
   const page = Math.floor(i / FRAME_PAGE);
+  // The frame count comes from the server: a tape can be shorter than the episode's step count,
+  // because a refused or engine-error step isn't on it.
+  const { data: first } = useFrames(episodeId, 0, true, mine);
   const { data, error } = useFrames(episodeId, page, true, mine);
+  const total = first?.total ?? data?.total ?? 1;
   const last = total - 1;
   const logRef = useRef<HTMLOListElement>(null);
 

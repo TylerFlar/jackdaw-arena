@@ -1,5 +1,3 @@
-# EventBridge Scheduler: the idle janitor, and an optional keep-warm ping (both free tier).
-
 resource "aws_iam_role" "scheduler" {
   name = "arena-scheduler"
   assume_role_policy = jsonencode({

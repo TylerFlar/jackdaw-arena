@@ -1,4 +1,3 @@
-# Email alerts: four CloudWatch alarms (inside the free tier's ten) and a monthly cost budget.
 # All of it only when alert_email is set. SNS asks the address to confirm each subscription.
 
 locals {

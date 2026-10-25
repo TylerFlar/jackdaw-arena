@@ -2,8 +2,6 @@
 #   deploy role:  only the repository's "production" environment (deploy.yml) may assume it.
 #   ci role:      only workflows on main; it can reach the scratch DSQL cluster (as admin, and as
 #                 the app role the tests map to it) and nothing else.
-#   pull role:    any of the repository's workflows; it can only log in to ECR Public, whose
-#                 anonymous pulls from GitHub's shared runners keep hitting the data limit.
 
 resource "aws_iam_openid_connect_provider" "github" {
   count          = var.create_github_oidc_provider ? 1 : 0
@@ -108,7 +106,6 @@ resource "aws_iam_role_policy" "ci" {
 }
 
 locals {
-  # A token for pulling ECR Public images with an account's (much higher) allowance.
   ecr_public_login = {
     Sid      = "EcrPublicLogin"
     Effect   = "Allow"

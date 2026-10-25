@@ -28,7 +28,6 @@ def current_agent(
         found = repo.agent_for_token(conn, digest(credentials.credentials))
         if found is None:
             raise HTTPException(401, "unknown or revoked token")
-        # Record use at most hourly: a write per request would cost more than the request.
         if found.last_used_at is None or now - found.last_used_at > timedelta(hours=1):
             repo.touch_token(conn, found.token_id, now)
             conn.commit()

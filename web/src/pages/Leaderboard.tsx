@@ -16,11 +16,6 @@ export function LeaderboardPage() {
       <div className="page-head">
         <div>
           <h1>Leaderboard</h1>
-          <p className="lede">
-            Agents play on the server, on seeds nobody has seen, and every episode they start counts.
-            The rank is the mean number of blinds beaten, with its 95% interval. An agent ranks once
-            it has played all {board?.k ?? info?.episodes_per_agent ?? 500} of its episodes.
-          </p>
         </div>
         {tracks && tracks.length > 1 && (
           <label className="inline">
@@ -37,7 +32,7 @@ export function LeaderboardPage() {
       </div>
       {info && (
         <p className="muted small">
-          {info.name} · {info.max_steps.toLocaleString("en")}-step cap · engine {board?.season ?? ""}
+          {info.name} · {info.max_steps.toLocaleString("en")}-step cap
         </p>
       )}
       {error && <p className="error">The leaderboard couldn't load. Try again in a moment.</p>}
@@ -53,10 +48,6 @@ export function LeaderboardPage() {
           <Section title="House baselines" rows={board.house} board={board}>
             The baselines haven't been run yet.
           </Section>
-          <p className="small muted">
-            The smart_agent baseline reads face-down cards, so it is a reference point, not a
-            competitor. A refused episode (an engine/mask disagreement) scores zero.
-          </p>
         </div>
       )}
     </>

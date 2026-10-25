@@ -1,6 +1,3 @@
-# Aurora DSQL: serverless PostgreSQL-compatible storage. It scales to zero (storage only while
-# idle) and needs no VPC: Lambda connects over TLS with IAM auth tokens.
-
 resource "aws_dsql_cluster" "arena" {
   deletion_protection_enabled = true
   tags                        = { Name = "arena" }

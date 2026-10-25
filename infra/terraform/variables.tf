@@ -50,7 +50,7 @@ variable "api_memory_mb" {
 }
 
 variable "api_max_concurrency" {
-  description = "Reserved concurrency for the API: a hard cap on parallel requests (cost and scale knob). Null: none, so the account's limit applies. AWS refuses reservations that leave less than 100 unreserved."
+  description = "Reserved concurrency for the API: a hard cap on parallel requests. Null: none, so the account's limit applies. AWS refuses reservations that leave less than 100 unreserved."
   type        = number
   default     = null
   validation {
@@ -60,7 +60,7 @@ variable "api_max_concurrency" {
 }
 
 variable "keep_warm" {
-  description = "Ping the API every 5 minutes so most first requests skip the cold start (free tier)."
+  description = "Ping the API every 5 minutes so most first requests skip the cold start."
   type        = bool
   default     = true
 }

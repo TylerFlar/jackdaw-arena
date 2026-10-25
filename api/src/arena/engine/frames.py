@@ -1,6 +1,6 @@
 """Replay frames: what the player saw at each step of an ended episode, and what they did.
 
-A frame is built by replaying the episode's tape on a fresh run and reading jackdaw's cheap
+A frame is built by replaying the episode's tape on a fresh run and reading jackdaw's
 per-section views. Face-down cards stay face down: the replay shows the player's view, not the
 engine's.
 """

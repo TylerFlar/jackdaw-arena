@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router";
-import { useMe, useProviders, useSignOut, useVersion } from "../api/hooks";
+import { useMe, useProviders, useSignOut } from "../api/hooks";
 
 export function signInHref(provider: string, next: string): string {
   return `/auth/login/${encodeURIComponent(provider)}?next=${encodeURIComponent(next)}`;
@@ -29,7 +29,6 @@ function SignIn() {
 
 export function Layout({ children }: { children: ReactNode }) {
   const { data: me } = useMe();
-  const { data: version } = useVersion();
   const signOut = useSignOut();
   return (
     <div className="shell">
@@ -66,12 +65,11 @@ export function Layout({ children }: { children: ReactNode }) {
       <footer className="footer">
         <div className="container">
           <span>
-            Engine <a href="https://github.com/TylerFlar/jackdaw-balatro">jackdaw</a>{" "}
-            {version?.engine ?? ""}
+            Runs on <a href="https://github.com/TylerFlar/jackdaw-balatro">jackdaw</a>
           </span>
           <a href="https://github.com/TylerFlar/jackdaw-arena">Source</a>
           <a href="/api/docs">API</a>
-          <span>Not affiliated with LocalThunk or Playstack. No game assets are used.</span>
+          <span>Not affiliated with LocalThunk or Playstack.</span>
         </div>
       </footer>
     </div>

@@ -1,7 +1,6 @@
 import { Link, useParams, useSearchParams } from "react-router";
 import { ApiError } from "../api/client";
-import { useEpisode } from "../api/hooks";
-import { CopyButton } from "../components/CopyButton";
+import { useEpisode, useTracks } from "../api/hooks";
 import { ReplayViewer } from "../components/replay/ReplayViewer";
 import { endReason } from "../lib/format";
 
@@ -10,6 +9,7 @@ export function EpisodePage() {
   const [params] = useSearchParams();
   const mine = params.get("mine") === "1";
   const { data: ep, error, isLoading } = useEpisode(id, mine);
+  const { data: tracks } = useTracks();
 
   if (error instanceof ApiError && error.status === 404) {
     return (
@@ -23,17 +23,7 @@ export function EpisodePage() {
   if (!ep) return <p className="error">The episode couldn't load.</p>;
 
   const final = ep?.final;
-  const tapeUrl = mine ? `/api/me/episodes/${id}/tape` : `/api/episodes/${id}/tape`;
-  // Any jackdaw release that reproduces the final state verifies it; the tape's own release
-  // (recorded with ep.season) always does.
-  const verify = final
-    ? `jackdaw-arena verify ${id}\n# or by hand, with jackdaw (this tape was recorded with ${ep?.season}):\n` +
-      `import json\nfrom jackdaw.core import Game\n` +
-      `tape = json.load(open("tape.json"))\n` +
-      `g = Game.new(tape["back"], tape["stake"], tape["seed"])\n` +
-      `for a in tape["tape"]: g.step(a)\n` +
-      `assert g.state_hash() == tape["final_state_hash"]`
-    : "";
+  const trackName = tracks?.find((t) => t.key === ep.track)?.name ?? ep.track;
 
   return (
     <>
@@ -44,7 +34,7 @@ export function EpisodePage() {
           </h1>
           {ep && (
             <p className="muted">
-              <Link to={`/agents/${ep.agent}`}>{ep.agent}</Link> · {ep.track} · engine {ep.season}
+              <Link to={`/agents/${ep.agent}`}>{ep.agent}</Link> · {trackName}
             </p>
           )}
         </div>
@@ -74,16 +64,10 @@ export function EpisodePage() {
             <span className="muted">seed</span> <code>{final.seed}</code>
             <span className="muted">state hash</span> <span className="hash">{final.final_state_hash}</span>
           </div>
-          <div className="row" style={{ marginTop: "0.75rem" }}>
-            <a className="button" href={tapeUrl} download={`episode-${id}.json`}>
-              Download tape
-            </a>
-            <CopyButton text={verify} label="Copy verify snippet" />
-          </div>
         </section>
       )}
 
-      {final && <ReplayViewer episodeId={id} total={final.length + 1} mine={mine} />}
+      {final && <ReplayViewer episodeId={id} mine={mine} />}
     </>
   );
 }

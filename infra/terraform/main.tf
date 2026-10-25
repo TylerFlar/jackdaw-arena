@@ -1,5 +1,3 @@
-# Jackdaw Arena on AWS, serverless: nothing runs (or bills by the hour) while nobody plays.
-#
 #   CloudFront (arena.tylerflar.com) ─┬─ default ─────────▶ S3: the React SPA
 #                                     ├─ /api/* (GET) ───▶ Lambda "arena-api", edge-cached per Cache-Control
 #                                     └─ /api/v1, /api/me, /auth, /healthz ─▶ the same Lambda, never cached
