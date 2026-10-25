@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import type { ReactElement } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import type { Frame, Leaderboard, MeDoc, ReplayFrame, Stats } from "../api/client";
+import type { Leaderboard, MeDoc, ReplayFrame, Stats } from "../api/client";
 import fixtures from "../replay/fixtures.json";
 
 export const ORIGIN = globalThis.location?.origin ?? "http://localhost:3000";
@@ -31,28 +31,6 @@ export const board: Leaderboard = {
   provisional: [{ rank: null, agent: agent("newcomer"), stats: stats({ n: 37, blinds_mean: 3.1 }) }],
   house: [{ rank: null, agent: agent("house-smart", "house"), stats: stats({ blinds_mean: 4.98 }) }],
 }; // prettier-ignore
-
-const card = (rank: string, suit: string, over = {}) => ({
-  face_down: false, key: "c_base", front: `${suit[0]}_${rank[0]}`, suit, rank, edition: null,
-  seal: null, debuff: false, cost: 1, sell_cost: 1, eternal: false, perishable: false,
-  rental: false, ...over,
-}); // prettier-ignore
-
-export function frame(i: number, over: Partial<Frame> = {}): Frame {
-  return {
-    i, phase: i === 0 ? "blind_select" : "selecting_hand", ante: 1, round: 1, dollars: 4,
-    chips: i * 10, hands_left: 4, discards_left: 3,
-    blind: i === 0 ? null : { key: "bl_small", name: "Small Blind", chips: 300, boss: false, disabled: false, dollars: 3 },
-    blinds: i === 0 ? { small: { name: "Small Blind", status: "SELECT", score: 300, tag: "Juggle Tag" } } : null,
-    hand: i === 0 ? [] : [card("King", "Spades"), card("Ace", "Hearts", { seal: "Gold" })],
-    jokers: [{ ...card("", "", { key: "j_joker", suit: null, rank: null, front: null }) }],
-    consumables: [], shop: { cards: [], vouchers: [], boosters: [] }, pack: [], tags: [],
-    last_score: null, deck_size: 44, discard_size: 0,
-    action: i < 3 ? ["SelectBlind"] : null,
-    description: i === 0 ? "Select Small Blind" : i === 1 ? "Play K♠ A♥" : i === 2 ? "Discard K♠" : null,
-    ...over,
-  }; // prettier-ignore
-}
 
 const atlas = (file: string, cols: number, rows: number, w = 142, h = 190) => ({
   file, cell: [w, h], size: [cols * w, rows * h],
@@ -106,11 +84,6 @@ export const handlers = [
     const from = Number(q.get("from") ?? 0);
     const frames = replayFrames.slice(from, from + Number(q.get("limit") ?? 200));
     return HttpResponse.json({ total: replayFrames.length, start: from, frames });
-  }),
-  http.get(url("/api/episodes/:id/frames"), ({ request }) => {
-    const from = Number(new URL(request.url).searchParams.get("from") ?? 0);
-    const frames = [0, 1, 2, 3].filter((i) => i >= from).map((i) => frame(i));
-    return HttpResponse.json({ total: 4, start: from, frames });
   }),
 ];
 

@@ -70,24 +70,6 @@ export function useEpisode(id: string, mine = false) {
   });
 }
 
-export const FRAME_PAGE = 200;
-
-export function useFrames(id: string, page: number, enabled: boolean, mine = false) {
-  return useQuery({
-    queryKey: ["frames", id, page, mine],
-    enabled,
-    staleTime: Infinity,
-    queryFn: () => {
-      const params = { path: { episode_id: id }, query: { from: page * FRAME_PAGE, limit: FRAME_PAGE } };
-      return unwrap(
-        mine
-          ? api.GET("/api/me/episodes/{episode_id}/frames", { params })
-          : api.GET("/api/episodes/{episode_id}/frames", { params }),
-      );
-    },
-  });
-}
-
 export function useProviders() {
   return useQuery({
     queryKey: ["providers"],
