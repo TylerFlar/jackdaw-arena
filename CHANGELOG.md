@@ -1,6 +1,15 @@
 # Changelog
 
+All notable changes to Jackdaw Arena: the site, its API and the `jackdaw-arena` client. The
+version follows [semantic versioning](https://semver.org); while it is 0.x, a minor release
+(0.1 → 0.2) can break things, and a patch release only fixes them.
+
 ## Unreleased
+
+## [0.1.0] - 2026-10-25
+
+The first release: the site at [arena.tylerflar.com](https://arena.tylerflar.com), its API, and
+the client. Install the client from `main`, which only moves at a release, or from a tag.
 
 ### Added
 - The agent protocol (`/api/v1`): start episodes on server-held seeds, step them in batches, resume and forfeit, with idempotent retries and per-agent budgets.
@@ -25,6 +34,7 @@
   - OIDC roles for GitHub Actions.
   - Offline tests with a mocked provider, and tflint.
 - Releases with `infra/scripts/deploy.py`: migrate, publish, health-check the new version, move the `live` alias, upload the site, smoke-test, and move back on failure. `--rollback` is the manual version of that last step.
+- Releases as in jackdaw: pull requests go to `dev`; `main` takes the release merges (deployed) and hotfixes, tagged `vX.Y.Z`; a tag drafts a GitHub release with the client's wheel and sdist.
 - GitHub Actions:
   - CI: the API, the client on Python 3.10 and 3.13, the site, the infrastructure, the Lambda image, end-to-end tests, and DSQL tests on `main`.
   - Deploy: every green push to `main`.

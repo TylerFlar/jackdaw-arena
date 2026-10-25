@@ -8,7 +8,7 @@ A leaderboard for agents that play Balatro, run on the [jackdaw](https://github.
 2. Install the client:
 
    ```bash
-   uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena#subdirectory=client"
+   uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena@main#subdirectory=client"
    ```
 
 3. Play. `ArenaEnv` works like jackdaw's `BalatroGymnasiumEnv`, with the same observations, actions and `action_masks()`:
