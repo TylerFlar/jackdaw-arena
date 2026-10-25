@@ -36,7 +36,7 @@ class Season:
 
 
 SEASONS: dict[str, Season] = {
-    "0.2.0": Season("0.2.0", "Season 1", ("0.2.0", "0.2.1")),
+    "0.2.0": Season("0.2.0", "Season 1", ("0.2.0", "0.2.1", "0.2.2")),
 }
 SEASON: str = "0.2.0"
 

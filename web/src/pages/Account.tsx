@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { ApiError, type MyAgent, type NewToken } from "../api/client";
-import { useCreateAgent, useCreateToken, useMe, useRevokeToken, useUpdateAgent } from "../api/hooks";
+import { useCreateAgent, useCreateToken, useMe, useRevokeToken, useTracks, useUpdateAgent } from "../api/hooks";
 import { CopyButton } from "../components/CopyButton";
+import { useTrackLabel } from "../components/TrackTabs";
 import { SignInOptions } from "./SignIn";
 import { ago } from "../lib/format";
 
@@ -96,6 +97,12 @@ function AgentCard({ agent }: { agent: MyAgent }) {
   const [label, setLabel] = useState("");
   const [fresh, setFresh] = useState<NewToken | null>(null);
   const used = Object.entries(agent.used);
+  const { data: tracks } = useTracks();
+  const trackLabel = useTrackLabel();
+  const runs = ([key, n]: [string, number]) => {
+    const t = tracks?.find((x) => x.key === key);
+    return t ? `${n} of ${t.episodes_per_agent} runs on ${trackLabel(t)}` : `${n} runs on ${key}`;
+  };
   return (
     <section className="panel" aria-label={agent.name}>
       <div className="row">
@@ -116,7 +123,7 @@ function AgentCard({ agent }: { agent: MyAgent }) {
         </label>
       </div>
       <p className="small muted">
-        {used.length ? used.map(([t, n]) => `${n} episodes on ${t}`).join(" · ") : "No episodes yet"}
+        {used.length ? used.map(runs).join(" · ") : "No runs yet"}
       </p>
 
       <h3>Tokens</h3>

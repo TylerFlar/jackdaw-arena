@@ -860,6 +860,11 @@
       ],
       "title": "Ended At"
      },
+     "engine_version": {
+      "description": "the jackdaw release that played it",
+      "title": "Engine Version",
+      "type": "string"
+     },
      "final": {
       "anyOf": [
        {
@@ -900,7 +905,8 @@
      "status",
      "t",
      "created_at",
-     "ended_at"
+     "ended_at",
+     "engine_version"
     ],
     "title": "EpisodeSummary",
     "type": "object"
@@ -1344,6 +1350,78 @@
     "title": "Leaderboard",
     "type": "object"
    },
+   "LevelUp": {
+    "properties": {
+     "chips": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Chips"
+     },
+     "hand": {
+      "title": "Hand",
+      "type": "string"
+     },
+     "level": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Level"
+     },
+     "mult": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Mult"
+     }
+    },
+    "required": [
+     "hand",
+     "level",
+     "chips",
+     "mult"
+    ],
+    "title": "LevelUp",
+    "type": "object"
+   },
+   "Limits": {
+    "properties": {
+     "consumables": {
+      "title": "Consumables",
+      "type": "integer"
+     },
+     "hand": {
+      "title": "Hand",
+      "type": "integer"
+     },
+     "jokers": {
+      "title": "Jokers",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "hand",
+     "jokers",
+     "consumables"
+    ],
+    "title": "Limits",
+    "type": "object"
+   },
    "MeDoc": {
     "properties": {
      "agents": {
@@ -1491,6 +1569,53 @@
     "title": "NewToken",
     "type": "object"
    },
+   "Outcome": {
+    "description": "What a frame's action did.",
+    "properties": {
+     "cash_out": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the money the cash out paid",
+      "title": "Cash Out"
+     },
+     "level_ups": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/LevelUp"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "hands whose level changed",
+      "title": "Level Ups"
+     },
+     "play": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PlayOutcome"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "title": "Outcome",
+    "type": "object"
+   },
    "Owner": {
     "properties": {
      "avatar_url": {
@@ -1523,6 +1648,78 @@
     "title": "Owner",
     "type": "object"
    },
+   "PackInfo": {
+    "properties": {
+     "choices": {
+      "description": "cards still to take",
+      "title": "Choices",
+      "type": "integer"
+     },
+     "kind": {
+      "description": "Arcana, Celestial, Spectral, Standard or Buffoon",
+      "title": "Kind",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "choices"
+    ],
+    "title": "PackInfo",
+    "type": "object"
+   },
+   "PlayOutcome": {
+    "properties": {
+     "events": {
+      "items": {
+       "$ref": "#/components/schemas/ScoreEventModel"
+      },
+      "title": "Events",
+      "type": "array"
+     },
+     "hand": {
+      "title": "Hand",
+      "type": "string"
+     },
+     "level": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "description": "the hand's level when played, before any level-up",
+      "title": "Level"
+     },
+     "played": {
+      "description": "the played cards' ids, in play order",
+      "items": {
+       "type": "integer"
+      },
+      "title": "Played",
+      "type": "array"
+     },
+     "scoring": {
+      "description": "the ids of the played cards that score",
+      "items": {
+       "type": "integer"
+      },
+      "title": "Scoring",
+      "type": "array"
+     }
+    },
+    "required": [
+     "hand",
+     "level",
+     "played",
+     "scoring",
+     "events"
+    ],
+    "title": "PlayOutcome",
+    "type": "object"
+   },
    "Provider": {
     "properties": {
      "id": {
@@ -1539,6 +1736,566 @@
      "name"
     ],
     "title": "Provider",
+    "type": "object"
+   },
+   "ReplayBlindChoice": {
+    "properties": {
+     "key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Key"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Score"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status"
+     },
+     "tag": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tag"
+     },
+     "tag_key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the skip tag's key",
+      "title": "Tag Key"
+     }
+    },
+    "required": [
+     "name",
+     "status",
+     "score",
+     "tag",
+     "key",
+     "tag_key"
+    ],
+    "title": "ReplayBlindChoice",
+    "type": "object"
+   },
+   "ReplayCard": {
+    "properties": {
+     "cost": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost"
+     },
+     "debuff": {
+      "title": "Debuff",
+      "type": "boolean"
+     },
+     "edition": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edition"
+     },
+     "eternal": {
+      "title": "Eternal",
+      "type": "boolean"
+     },
+     "face_down": {
+      "title": "Face Down",
+      "type": "boolean"
+     },
+     "front": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Front"
+     },
+     "id": {
+      "description": "the card's sort id: the same card from area to area",
+      "title": "Id",
+      "type": "integer"
+     },
+     "key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Key"
+     },
+     "perishable": {
+      "title": "Perishable",
+      "type": "boolean"
+     },
+     "rank": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rank"
+     },
+     "rental": {
+      "title": "Rental",
+      "type": "boolean"
+     },
+     "seal": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seal"
+     },
+     "sell_cost": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sell Cost"
+     },
+     "suit": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Suit"
+     }
+    },
+    "required": [
+     "face_down",
+     "key",
+     "front",
+     "suit",
+     "rank",
+     "edition",
+     "seal",
+     "debuff",
+     "cost",
+     "sell_cost",
+     "eternal",
+     "perishable",
+     "rental",
+     "id"
+    ],
+    "title": "ReplayCard",
+    "type": "object"
+   },
+   "ReplayDoc": {
+    "properties": {
+     "frames": {
+      "items": {
+       "$ref": "#/components/schemas/ReplayFrame"
+      },
+      "title": "Frames",
+      "type": "array"
+     },
+     "start": {
+      "title": "Start",
+      "type": "integer"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "total",
+     "start",
+     "frames"
+    ],
+    "title": "ReplayDoc",
+    "type": "object"
+   },
+   "ReplayFrame": {
+    "properties": {
+     "action": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the tape action taken here; null at the end",
+      "title": "Action"
+     },
+     "ante": {
+      "title": "Ante",
+      "type": "integer"
+     },
+     "blind": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/BlindModel"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "blinds": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "$ref": "#/components/schemas/ReplayBlindChoice"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Blinds"
+     },
+     "chips": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Chips"
+     },
+     "consumables": {
+      "items": {
+       "$ref": "#/components/schemas/ReplayCard"
+      },
+      "title": "Consumables",
+      "type": "array"
+     },
+     "deck_size": {
+      "title": "Deck Size",
+      "type": "integer"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "discard_size": {
+      "title": "Discard Size",
+      "type": "integer"
+     },
+     "discards_left": {
+      "title": "Discards Left",
+      "type": "integer"
+     },
+     "dollars": {
+      "title": "Dollars",
+      "type": "integer"
+     },
+     "hand": {
+      "items": {
+       "$ref": "#/components/schemas/ReplayCard"
+      },
+      "title": "Hand",
+      "type": "array"
+     },
+     "hands_left": {
+      "title": "Hands Left",
+      "type": "integer"
+     },
+     "i": {
+      "title": "I",
+      "type": "integer"
+     },
+     "jokers": {
+      "items": {
+       "$ref": "#/components/schemas/ReplayCard"
+      },
+      "title": "Jokers",
+      "type": "array"
+     },
+     "last_score": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ReplayScore"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "limits": {
+      "$ref": "#/components/schemas/Limits"
+     },
+     "outcome": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Outcome"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "pack": {
+      "items": {
+       "$ref": "#/components/schemas/ReplayCard"
+      },
+      "title": "Pack",
+      "type": "array"
+     },
+     "pack_info": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PackInfo"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "phase": {
+      "title": "Phase",
+      "type": "string"
+     },
+     "reroll_cost": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Reroll Cost"
+     },
+     "round": {
+      "title": "Round",
+      "type": "integer"
+     },
+     "shop": {
+      "$ref": "#/components/schemas/ReplayShop"
+     },
+     "tags": {
+      "items": {
+       "$ref": "#/components/schemas/TagModel"
+      },
+      "title": "Tags",
+      "type": "array"
+     }
+    },
+    "required": [
+     "i",
+     "phase",
+     "ante",
+     "round",
+     "dollars",
+     "chips",
+     "hands_left",
+     "discards_left",
+     "blind",
+     "blinds",
+     "hand",
+     "jokers",
+     "consumables",
+     "shop",
+     "pack",
+     "pack_info",
+     "tags",
+     "last_score",
+     "limits",
+     "reroll_cost",
+     "deck_size",
+     "discard_size",
+     "action",
+     "description",
+     "outcome"
+    ],
+    "title": "ReplayFrame",
+    "type": "object"
+   },
+   "ReplayScore": {
+    "properties": {
+     "chips": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Chips"
+     },
+     "debuffed": {
+      "title": "Debuffed",
+      "type": "boolean"
+     },
+     "dollars": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "description": "the money the hand paid as it scored",
+      "title": "Dollars"
+     },
+     "hand_type": {
+      "title": "Hand Type",
+      "type": "string"
+     },
+     "mult": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Mult"
+     },
+     "total": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Total"
+     }
+    },
+    "required": [
+     "hand_type",
+     "chips",
+     "mult",
+     "total",
+     "debuffed",
+     "dollars"
+    ],
+    "title": "ReplayScore",
+    "type": "object"
+   },
+   "ReplayShop": {
+    "properties": {
+     "boosters": {
+      "items": {
+       "$ref": "#/components/schemas/ReplayCard"
+      },
+      "title": "Boosters",
+      "type": "array"
+     },
+     "cards": {
+      "items": {
+       "$ref": "#/components/schemas/ReplayCard"
+      },
+      "title": "Cards",
+      "type": "array"
+     },
+     "vouchers": {
+      "items": {
+       "$ref": "#/components/schemas/ReplayCard"
+      },
+      "title": "Vouchers",
+      "type": "array"
+     }
+    },
+    "required": [
+     "cards",
+     "vouchers",
+     "boosters"
+    ],
+    "title": "ReplayShop",
     "type": "object"
    },
    "Reward": {
@@ -1600,6 +2357,161 @@
      "track"
     ],
     "title": "RunningEpisode",
+    "type": "object"
+   },
+   "ScoreEventModel": {
+    "description": "One step of a hand's scoring: jackdaw's ``ScoreEvent`` (its docs/api.md).",
+    "properties": {
+     "card": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the card it belongs to, where the game shows it",
+      "title": "Card"
+     },
+     "chips": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "chips added",
+      "title": "Chips"
+     },
+     "dollars": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "money paid",
+      "title": "Dollars"
+     },
+     "hand_chips": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "description": "the hand's chips after the event",
+      "title": "Hand Chips"
+     },
+     "hand_mult": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "description": "the hand's mult after the event",
+      "title": "Hand Mult"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "level": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Level"
+     },
+     "mult": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "mult added",
+      "title": "Mult"
+     },
+     "shattered": {
+      "title": "Shattered",
+      "type": "boolean"
+     },
+     "swap": {
+      "title": "Swap",
+      "type": "boolean"
+     },
+     "target": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the card it happens to, when another one",
+      "title": "Target"
+     },
+     "x_mult": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "mult multiplied",
+      "title": "X Mult"
+     }
+    },
+    "required": [
+     "kind",
+     "card",
+     "target",
+     "chips",
+     "mult",
+     "x_mult",
+     "dollars",
+     "level",
+     "swap",
+     "shattered",
+     "hand_chips",
+     "hand_mult"
+    ],
+    "title": "ScoreEventModel",
     "type": "object"
    },
    "ScoreModel": {
@@ -2658,6 +3570,73 @@
     ]
    }
   },
+  "/api/episodes/{episode_id}/replay": {
+   "get": {
+    "description": "The frames with every card's id and each action's outcome: a play's scoring events,\na cash out's money, changed hand levels.",
+    "operationId": "episode_replay_api_episodes__episode_id__replay_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "from",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "From",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 200,
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReplayDoc"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Episode Replay",
+    "tags": [
+     "public"
+    ]
+   }
+  },
   "/api/episodes/{episode_id}/tape": {
    "get": {
     "operationId": "episode_tape_api_episodes__episode_id__tape_get",
@@ -3150,6 +4129,72 @@
      }
     },
     "summary": "My Frames",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/episodes/{episode_id}/replay": {
+   "get": {
+    "operationId": "my_replay_api_me_episodes__episode_id__replay_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "from",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "From",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 200,
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReplayDoc"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "My Replay",
     "tags": [
      "account"
     ]

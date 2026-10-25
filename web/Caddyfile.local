@@ -1,5 +1,6 @@
 # CloudFront, played locally: one origin, the API behind /api, /auth and /healthz, the SPA
-# everywhere else (unknown paths fall back to index.html, as the CloudFront Function does).
+# everywhere else (unknown paths fall back to index.html, as the CloudFront Function does). The
+# site gets the production CSP (infra/terraform/web.tf), so the e2e tests catch a violation.
 :8080 {
 	encode zstd gzip
 	@api path /api/* /auth/* /healthz /healthz/*
@@ -7,6 +8,7 @@
 		reverse_proxy api:8000
 	}
 	handle {
+		header Content-Security-Policy "default-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; style-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		root * /srv
 		try_files {path} /index.html
 		file_server

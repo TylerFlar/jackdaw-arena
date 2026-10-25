@@ -17,6 +17,7 @@ from arena import schemas
 from arena.auth.deps import UserDep, csrf_protect
 from arena.auth.tokens import digest, display_prefix, new_token
 from arena.db import repo
+from arena.engine.replay import replay
 from arena.engine.spec import SEASON
 from arena.routes.auth import user_json
 from arena.routes.public import (
@@ -207,6 +208,18 @@ async def my_frames(
 ) -> dict[str, Any]:
     row = await anyio.to_thread.run_sync(_my_ended, request, user, episode_id)
     return await frames_document(row, start, limit)
+
+
+@router.get("/episodes/{episode_id}/replay", response_model=schemas.ReplayDoc)
+async def my_replay(
+    episode_id: uuid.UUID,
+    request: Request,
+    user: UserDep,
+    start: int = Query(0, ge=0, alias="from"),
+    limit: int = Query(200, ge=1, le=200),
+) -> dict[str, Any]:
+    row = await anyio.to_thread.run_sync(_my_ended, request, user, episode_id)
+    return await frames_document(row, start, limit, replay)
 
 
 @router.get("/episodes/{episode_id}/tape", response_model=schemas.TapeDoc)

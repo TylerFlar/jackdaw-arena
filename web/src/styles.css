@@ -450,13 +450,13 @@ tr:last-child td {
 .rule {
   margin-bottom: 1rem;
 }
-.board .agent-cell {
+.standings .agent-cell {
   min-width: 0;
 }
-.board .agent-cell .who {
+.standings .agent-cell .who {
   min-width: 0;
 }
-.board .agent-cell .who > * {
+.standings .agent-cell .who > * {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -505,13 +505,13 @@ tr:last-child td {
   color: var(--ink);
   text-decoration: none;
 }
-.board tr.baseline td {
+.standings tr.baseline td {
   color: var(--muted);
 }
-.board tr.baseline .score-value {
+.standings tr.baseline .score-value {
   color: var(--ink-2);
 }
-.board tr.group th {
+.standings tr.group th {
   padding-top: 1rem;
   border-bottom: 1px solid var(--grid);
 }
@@ -540,11 +540,11 @@ tr:last-child td {
 }
 /* Narrow screens keep rank, agent, score and runs. */
 @media (max-width: 640px) {
-  .board .opt,
-  .board .avatar {
+  .standings .opt,
+  .standings .avatar {
     display: none;
   }
-  .board .rank {
+  .standings .rank {
     width: 2.5rem;
   }
 }
@@ -1032,4 +1032,450 @@ dialog::backdrop {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* --- the replay board ---------------------------------------------------------------------------- */
+/* A dark table in both themes, with the game's own accents: chips blue, mult red, money gold. */
+
+.next-line {
+  margin: 0 0 0.6rem;
+  color: var(--ink-2);
+}
+.game-board {
+  --card-w: 64px;
+  --felt: #234238;
+  --panel: rgba(8, 18, 15, 0.72);
+  --panel-line: rgba(255, 255, 255, 0.1);
+  --g-chips: #009dff;
+  --g-mult: #fe5f55;
+  --g-money: #f3b958;
+  position: relative;
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 540px;
+  padding: 12px;
+  border-radius: 12px;
+  color: #f2efe4;
+  background: radial-gradient(120% 90% at 55% 45%, #31594b 0%, var(--felt) 55%, #15291f 100%);
+  overflow: hidden;
+}
+.game-board .k {
+  color: rgba(242, 239, 228, 0.7);
+  font-size: 0.8rem;
+}
+/* The pixel font on its grid: 16px and 32px, one weight. */
+:root[data-font="game"] .game-board {
+  font-synthesis: none;
+}
+:root[data-font="game"] .game-board :is(.hud, .blind-choices, .screen, .reroll, .pack-title, .deck-count, .popup, .banner) {
+  font-size: 16px;
+}
+:root[data-font="game"] .game-board :is(strong, b, .k) {
+  font-weight: 400;
+}
+:root[data-font="game"] .game-board .k {
+  font-size: 16px;
+}
+:root[data-font="game"] .game-board :is(.score-n, .hud-money .money, .screen h3, .banner) {
+  font-size: 32px;
+}
+.hud {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  font-family: var(--display);
+}
+.hud-box {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  text-align: center;
+}
+.hud-blind {
+  grid-template-columns: auto 1fr;
+  justify-items: start;
+  text-align: left;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+}
+.hud-blind div {
+  display: grid;
+}
+.hud-blind .target {
+  color: var(--g-mult);
+}
+.hud-blind .reward {
+  color: var(--g-money);
+}
+.score-n {
+  font-size: 1.6rem;
+}
+.hand-name {
+  min-height: 1.3em;
+}
+.chips-mult {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chips-mult .chips,
+.chips-mult .mult {
+  min-width: 3.4rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 1.25rem;
+  color: #fff;
+}
+.chips-mult .chips {
+  background: var(--g-chips);
+  text-align: right;
+}
+.chips-mult .mult {
+  background: var(--g-mult);
+  text-align: left;
+}
+.chips-mult .times {
+  color: var(--g-mult);
+}
+.hud-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.hud .hands {
+  color: var(--g-chips);
+  font-size: 1.3rem;
+}
+.hud .discards {
+  color: var(--g-mult);
+  font-size: 1.3rem;
+}
+.hud-money .money {
+  color: var(--g-money);
+  font-size: 1.6rem;
+}
+.hud-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.game-board :is(.hud span, .hud b, .hud strong) {
+  display: inline-block;
+}
+.table {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 10px;
+  min-width: 0;
+}
+.table-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.table-middle {
+  display: grid;
+  place-items: center;
+  min-height: 170px;
+}
+.table-bottom {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.zone-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 6px;
+  min-height: calc(var(--card-w) * 95 / 71 + 18px);
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  min-width: calc(var(--card-w) + 16px);
+}
+.zone-jokers {
+  flex: 1;
+}
+.zone-hand {
+  flex: 1;
+}
+.zone-play {
+  background: transparent;
+}
+.board-card {
+  position: relative;
+}
+.game-board .pcard,
+.game-board .item {
+  width: var(--card-w);
+  min-height: calc(var(--card-w) * 95 / 71);
+}
+.popups {
+  position: absolute;
+  left: -20px;
+  right: -20px;
+  top: -12px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 2;
+}
+.popup {
+  font-family: var(--display);
+  font-size: 16px;
+  line-height: 1;
+  padding: 3px 6px 4px;
+  border-radius: 5px;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+.popup.chips {
+  background: var(--g-chips);
+}
+.popup.mult,
+.popup.xmult {
+  background: var(--g-mult);
+}
+.popup.money {
+  background: var(--g-money);
+  color: #3b2a00;
+}
+.popup.plain {
+  background: #4a4f57;
+}
+.popup.big {
+  font-size: 24px;
+  padding: 6px 12px;
+}
+/* Under the jokers, above the played cards. */
+.banner-wrap {
+  position: absolute;
+  top: 150px;
+  left: 196px;
+  right: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 3;
+}
+.banner {
+  font-family: var(--display);
+  font-size: 32px;
+  padding: 8px 20px;
+  border-radius: 10px;
+  background: rgba(8, 18, 15, 0.85);
+  border: 2px solid var(--g-money);
+  color: #fff;
+  text-align: center;
+  max-width: 90%;
+}
+.deck-pile {
+  position: relative;
+  padding: 8px;
+}
+.deck-count {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  font-family: var(--display);
+  background: var(--panel);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.blind-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  font-family: var(--display);
+}
+.blind-choice {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  text-align: center;
+}
+.blind-choice.select {
+  border-color: var(--g-money);
+  box-shadow: 0 0 0 2px rgba(243, 185, 88, 0.35);
+}
+.blind-choice:is(.defeated, .skipped) {
+  opacity: 0.55;
+}
+.blind-choice .status {
+  font-size: 0.8rem;
+  color: rgba(242, 239, 228, 0.75);
+}
+.blind-choice .target {
+  color: var(--g-mult);
+}
+.blind-choice .skip {
+  font-size: 0.85rem;
+}
+.blind-choice .icon.tags {
+  width: 24px;
+  height: 24px;
+  image-rendering: auto;
+}
+.shop,
+.pack {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+.shop-extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.reroll,
+.pack-title {
+  font-family: var(--display);
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+}
+.reroll {
+  color: var(--g-money);
+}
+.game-board .price {
+  color: var(--g-money);
+}
+.screen {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 16px 28px;
+  border-radius: 12px;
+  background: var(--panel);
+  font-family: var(--display);
+}
+.screen h3 {
+  margin: 0;
+  font-size: 24px;
+}
+.screen p {
+  margin: 0;
+}
+.screen .money {
+  color: var(--g-money);
+  font-size: 20px;
+}
+@media (max-width: 760px) {
+  .banner-wrap {
+    top: 40%;
+    left: 0;
+  }
+  .game-board {
+    --card-w: 40px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px;
+    min-height: 0;
+  }
+  /* The sidebar becomes a block on top: the blind, then score and hand, the four counts, money. */
+  .hud {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .hud-pair {
+    display: contents;
+  }
+  .hud-blind,
+  .hud-money,
+  .hud-tags {
+    grid-column: 1 / -1;
+  }
+  .hud-blind {
+    min-height: 0;
+  }
+  .hud-score,
+  .hud-hand {
+    grid-column: span 2;
+  }
+  .hud-money {
+    order: 1;
+  }
+  .hud-tags {
+    order: 2;
+  }
+  .table-middle {
+    min-height: 110px;
+  }
+  .table-top {
+    flex-direction: column;
+  }
+  .blind-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .popup {
+    font-size: 13px;
+  }
+  .banner {
+    font-size: 22px;
+  }
+}
+
+/* --- the episode page ---------------------------------------------------------------------------- */
+
+.episode-head {
+  margin-bottom: 1rem;
+}
+.episode-head h1 {
+  margin-bottom: 0.25rem;
+}
+.crumbs {
+  margin-bottom: 0.25rem;
+}
+.track-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  vertical-align: middle;
+}
+.track-label .icon.stakes {
+  width: 20px;
+  height: 20px;
+  image-rendering: auto;
+}
+.track-label .icon.centers {
+  width: 15px;
+}
+.run-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.run-details dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.35rem 1rem;
+  margin: 0.75rem 0 0;
+}
+.run-details dt {
+  color: var(--muted);
+}
+.run-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .log {
+    max-height: 18rem;
+  }
 }

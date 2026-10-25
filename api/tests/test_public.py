@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import text
 
 from arena.engine.live import RunSpec, verify_tape
+from arena.engine.spec import ENGINE_VERSION
 from arena.services.leaderboard import Z95, wilson
 from tests.conftest import bearer
 
@@ -129,6 +130,7 @@ def test_replay_frames_and_tape_verify(client, agents):
     eid, final = play_to_end(client, token, 3)
     summary = client.get(f"/api/episodes/{eid}")
     assert summary.json()["final"]["seed"] == final["final"]["seed"]
+    assert summary.json()["engine_version"] == ENGINE_VERSION
     assert "immutable" in summary.headers["cache-control"]
 
     tape = client.get(f"/api/episodes/{eid}/tape").json()

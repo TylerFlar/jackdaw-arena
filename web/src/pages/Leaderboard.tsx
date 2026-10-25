@@ -40,7 +40,7 @@ function Standings({ board, dim }: { board: Leaderboard; dim: boolean }) {
       )}
       {(finished.length > 0 || board.provisional.length > 0) && (
         <div className="table-wrap">
-          <table className="board">
+          <table className="standings">
             <thead>
               <tr>
                 <th scope="col" className="rank">

@@ -106,6 +106,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/episodes/{episode_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Episode Replay
+         * @description The frames with every card's id and each action's outcome: a play's scoring events,
+         *     a cash out's money, changed hand levels.
+         */
+        get: operations["episode_replay_api_episodes__episode_id__replay_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/episodes/{episode_id}/tape": {
         parameters: {
             query?: never;
@@ -252,6 +273,23 @@ export interface paths {
         };
         /** My Frames */
         get: operations["my_frames_api_me_episodes__episode_id__frames_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/episodes/{episode_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Replay */
+        get: operations["my_replay_api_me_episodes__episode_id__replay_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -784,6 +822,11 @@ export interface components {
             created_at: string;
             /** Ended At */
             ended_at: string | null;
+            /**
+             * Engine Version
+             * @description the jackdaw release that played it
+             */
+            engine_version: string;
             final?: components["schemas"]["Final"] | null;
             /**
              * Id
@@ -930,6 +973,26 @@ export interface components {
             /** Track */
             track: string;
         };
+        /** LevelUp */
+        LevelUp: {
+            /** Chips */
+            chips: number | string;
+            /** Hand */
+            hand: string;
+            /** Level */
+            level: number | string;
+            /** Mult */
+            mult: number | string;
+        };
+        /** Limits */
+        Limits: {
+            /** Consumables */
+            consumables: number;
+            /** Hand */
+            hand: number;
+            /** Jokers */
+            jokers: number;
+        };
         /** MeDoc */
         MeDoc: {
             /** Agents */
@@ -991,6 +1054,23 @@ export interface components {
              */
             token: string;
         };
+        /**
+         * Outcome
+         * @description What a frame's action did.
+         */
+        Outcome: {
+            /**
+             * Cash Out
+             * @description the money the cash out paid
+             */
+            cash_out?: number | string | null;
+            /**
+             * Level Ups
+             * @description hands whose level changed
+             */
+            level_ups?: components["schemas"]["LevelUp"][] | null;
+            play?: components["schemas"]["PlayOutcome"] | null;
+        };
         /** Owner */
         Owner: {
             /** Avatar Url */
@@ -998,12 +1078,187 @@ export interface components {
             /** Login */
             login: string | null;
         };
+        /** PackInfo */
+        PackInfo: {
+            /**
+             * Choices
+             * @description cards still to take
+             */
+            choices: number;
+            /**
+             * Kind
+             * @description Arcana, Celestial, Spectral, Standard or Buffoon
+             */
+            kind: string;
+        };
+        /** PlayOutcome */
+        PlayOutcome: {
+            /** Events */
+            events: components["schemas"]["ScoreEventModel"][];
+            /** Hand */
+            hand: string;
+            /**
+             * Level
+             * @description the hand's level when played, before any level-up
+             */
+            level: number | string;
+            /**
+             * Played
+             * @description the played cards' ids, in play order
+             */
+            played: number[];
+            /**
+             * Scoring
+             * @description the ids of the played cards that score
+             */
+            scoring: number[];
+        };
         /** Provider */
         Provider: {
             /** Id */
             id: string;
             /** Name */
             name: string;
+        };
+        /** ReplayBlindChoice */
+        ReplayBlindChoice: {
+            /** Key */
+            key: string | null;
+            /** Name */
+            name: string | null;
+            /** Score */
+            score: number | string | null;
+            /** Status */
+            status: string | null;
+            /** Tag */
+            tag: string | null;
+            /**
+             * Tag Key
+             * @description the skip tag's key
+             */
+            tag_key: string | null;
+        };
+        /** ReplayCard */
+        ReplayCard: {
+            /** Cost */
+            cost: number | string | null;
+            /** Debuff */
+            debuff: boolean;
+            /** Edition */
+            edition: string | null;
+            /** Eternal */
+            eternal: boolean;
+            /** Face Down */
+            face_down: boolean;
+            /** Front */
+            front: string | null;
+            /**
+             * Id
+             * @description the card's sort id: the same card from area to area
+             */
+            id: number;
+            /** Key */
+            key: string | null;
+            /** Perishable */
+            perishable: boolean;
+            /** Rank */
+            rank: string | null;
+            /** Rental */
+            rental: boolean;
+            /** Seal */
+            seal: string | null;
+            /** Sell Cost */
+            sell_cost: number | string | null;
+            /** Suit */
+            suit: string | null;
+        };
+        /** ReplayDoc */
+        ReplayDoc: {
+            /** Frames */
+            frames: components["schemas"]["ReplayFrame"][];
+            /** Start */
+            start: number;
+            /** Total */
+            total: number;
+        };
+        /** ReplayFrame */
+        ReplayFrame: {
+            /**
+             * Action
+             * @description the tape action taken here; null at the end
+             */
+            action: unknown[] | null;
+            /** Ante */
+            ante: number;
+            blind: components["schemas"]["BlindModel"] | null;
+            /** Blinds */
+            blinds: {
+                [key: string]: components["schemas"]["ReplayBlindChoice"];
+            } | null;
+            /** Chips */
+            chips: number | string;
+            /** Consumables */
+            consumables: components["schemas"]["ReplayCard"][];
+            /** Deck Size */
+            deck_size: number;
+            /** Description */
+            description: string | null;
+            /** Discard Size */
+            discard_size: number;
+            /** Discards Left */
+            discards_left: number;
+            /** Dollars */
+            dollars: number;
+            /** Hand */
+            hand: components["schemas"]["ReplayCard"][];
+            /** Hands Left */
+            hands_left: number;
+            /** I */
+            i: number;
+            /** Jokers */
+            jokers: components["schemas"]["ReplayCard"][];
+            last_score: components["schemas"]["ReplayScore"] | null;
+            limits: components["schemas"]["Limits"];
+            outcome: components["schemas"]["Outcome"] | null;
+            /** Pack */
+            pack: components["schemas"]["ReplayCard"][];
+            pack_info: components["schemas"]["PackInfo"] | null;
+            /** Phase */
+            phase: string;
+            /** Reroll Cost */
+            reroll_cost: number | string;
+            /** Round */
+            round: number;
+            shop: components["schemas"]["ReplayShop"];
+            /** Tags */
+            tags: components["schemas"]["TagModel"][];
+        };
+        /** ReplayScore */
+        ReplayScore: {
+            /** Chips */
+            chips: number | string;
+            /** Debuffed */
+            debuffed: boolean;
+            /**
+             * Dollars
+             * @description the money the hand paid as it scored
+             */
+            dollars: number | string;
+            /** Hand Type */
+            hand_type: string;
+            /** Mult */
+            mult: number | string;
+            /** Total */
+            total: number | string;
+        };
+        /** ReplayShop */
+        ReplayShop: {
+            /** Boosters */
+            boosters: components["schemas"]["ReplayCard"][];
+            /** Cards */
+            cards: components["schemas"]["ReplayCard"][];
+            /** Vouchers */
+            vouchers: components["schemas"]["ReplayCard"][];
         };
         /** Reward */
         Reward: {
@@ -1037,6 +1292,60 @@ export interface components {
             t: number;
             /** Track */
             track: string;
+        };
+        /**
+         * ScoreEventModel
+         * @description One step of a hand's scoring: jackdaw's ``ScoreEvent`` (its docs/api.md).
+         */
+        ScoreEventModel: {
+            /**
+             * Card
+             * @description the card it belongs to, where the game shows it
+             */
+            card: number | null;
+            /**
+             * Chips
+             * @description chips added
+             */
+            chips: number | string | null;
+            /**
+             * Dollars
+             * @description money paid
+             */
+            dollars: number | string | null;
+            /**
+             * Hand Chips
+             * @description the hand's chips after the event
+             */
+            hand_chips: number | string;
+            /**
+             * Hand Mult
+             * @description the hand's mult after the event
+             */
+            hand_mult: number | string;
+            /** Kind */
+            kind: string;
+            /** Level */
+            level: number | string | null;
+            /**
+             * Mult
+             * @description mult added
+             */
+            mult: number | string | null;
+            /** Shattered */
+            shattered: boolean;
+            /** Swap */
+            swap: boolean;
+            /**
+             * Target
+             * @description the card it happens to, when another one
+             */
+            target: number | null;
+            /**
+             * X Mult
+             * @description mult multiplied
+             */
+            x_mult: number | string | null;
         };
         /** ScoreModel */
         ScoreModel: {
@@ -1467,6 +1776,40 @@ export interface operations {
             };
         };
     };
+    episode_replay_api_episodes__episode_id__replay_get: {
+        parameters: {
+            query?: {
+                from?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                episode_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayDoc"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     episode_tape_api_episodes__episode_id__tape_get: {
         parameters: {
             query?: never;
@@ -1771,6 +2114,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FramesDoc"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_replay_api_me_episodes__episode_id__replay_get: {
+        parameters: {
+            query?: {
+                from?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                episode_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayDoc"];
                 };
             };
             /** @description Validation Error */

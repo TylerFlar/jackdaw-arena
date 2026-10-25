@@ -59,7 +59,7 @@ export function Histogram({ counts, title }: { counts: number[]; title: string }
         </div>
       ) : (
         <div style={{ position: "relative" }} ref={box}>
-          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title}: ${total} episodes`}>
+          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title}: ${total} runs`}>
             {ticks.map((t) => (
               <g key={t}>
                 <line className="gridline" x1={m.left} x2={W - m.right} y1={y(t)} y2={y(t)} />

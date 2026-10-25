@@ -194,6 +194,7 @@ class EpisodeSummary(BaseModel):
     created_at: datetime
     ended_at: datetime | None
     final: Final | None = None
+    engine_version: str = Field(description="the jackdaw release that played it")
 
 
 class AgentPage(BaseModel):
@@ -295,6 +296,113 @@ class FramesDoc(BaseModel):
     total: int
     start: int
     frames: list[Frame]
+
+
+# --- replay v2: cards with identities, and each action's outcome ----------------------------
+
+
+class ReplayCard(CardModel):
+    id: int = Field(description="the card's sort id: the same card from area to area")
+
+
+class ReplayBlindChoice(BlindChoice):
+    key: str | None
+    tag_key: str | None = Field(description="the skip tag's key")
+
+
+class ReplayShop(BaseModel):
+    cards: list[ReplayCard]
+    vouchers: list[ReplayCard]
+    boosters: list[ReplayCard]
+
+
+class ReplayScore(ScoreModel):
+    dollars: Num = Field(description="the money the hand paid as it scored")
+
+
+class Limits(BaseModel):
+    hand: int
+    jokers: int
+    consumables: int
+
+
+class PackInfo(BaseModel):
+    kind: str = Field(description="Arcana, Celestial, Spectral, Standard or Buffoon")
+    choices: int = Field(description="cards still to take")
+
+
+class ScoreEventModel(BaseModel):
+    """One step of a hand's scoring: jackdaw's ``ScoreEvent`` (its docs/api.md)."""
+
+    kind: str
+    card: int | None = Field(description="the card it belongs to, where the game shows it")
+    target: int | None = Field(description="the card it happens to, when another one")
+    chips: Num | None = Field(description="chips added")
+    mult: Num | None = Field(description="mult added")
+    x_mult: Num | None = Field(description="mult multiplied")
+    dollars: Num | None = Field(description="money paid")
+    level: Num | None
+    swap: bool
+    shattered: bool
+    hand_chips: Num = Field(description="the hand's chips after the event")
+    hand_mult: Num = Field(description="the hand's mult after the event")
+
+
+class PlayOutcome(BaseModel):
+    hand: str
+    level: Num = Field(description="the hand's level when played, before any level-up")
+    played: list[int] = Field(description="the played cards' ids, in play order")
+    scoring: list[int] = Field(description="the ids of the played cards that score")
+    events: list[ScoreEventModel]
+
+
+class LevelUp(BaseModel):
+    hand: str
+    level: Num
+    chips: Num
+    mult: Num
+
+
+class Outcome(BaseModel):
+    """What a frame's action did."""
+
+    play: PlayOutcome | None = None
+    cash_out: Num | None = Field(None, description="the money the cash out paid")
+    level_ups: list[LevelUp] | None = Field(None, description="hands whose level changed")
+
+
+class ReplayFrame(BaseModel):
+    i: int
+    phase: str
+    ante: int
+    round: int
+    dollars: int
+    chips: Num
+    hands_left: int
+    discards_left: int
+    blind: BlindModel | None
+    blinds: dict[str, ReplayBlindChoice] | None
+    hand: list[ReplayCard]
+    jokers: list[ReplayCard]
+    consumables: list[ReplayCard]
+    shop: ReplayShop
+    pack: list[ReplayCard]
+    pack_info: PackInfo | None
+    tags: list[TagModel]
+    last_score: ReplayScore | None
+    limits: Limits
+    reroll_cost: Num
+    deck_size: int
+    discard_size: int
+    action: list[Any] | None = Field(description="the tape action taken here; null at the end")
+    description: str | None
+    outcome: Outcome | None
+
+
+class ReplayDoc(BaseModel):
+    total: int
+    start: int
+    frames: list[ReplayFrame]
 
 
 class TapeDoc(BaseModel):

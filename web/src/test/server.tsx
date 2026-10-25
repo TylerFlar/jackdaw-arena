@@ -4,7 +4,8 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import type { ReactElement } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import type { Frame, Leaderboard, MeDoc, Stats } from "../api/client";
+import type { Frame, Leaderboard, MeDoc, ReplayFrame, Stats } from "../api/client";
+import fixtures from "../replay/fixtures.json";
 
 export const ORIGIN = globalThis.location?.origin ?? "http://localhost:3000";
 export const url = (path: string) => `${ORIGIN}${path}`;
@@ -68,6 +69,13 @@ export const artManifest = {
   },
 }; // prettier-ignore
 
+// Real replay frames (src/replay/fixtures.json), strung together: a discard, then a hand that
+// scores with a joker.
+const pairs = fixtures as unknown as Record<string, [ReplayFrame, ReplayFrame]>;
+export const replayFrames: ReplayFrame[] = [...pairs.discard!, ...pairs.play!].map((f, i, all) =>
+  i === all.length - 1 ? { ...f, i, action: null, description: null, outcome: null } : { ...f, i },
+);
+
 export const me: MeDoc = {
   user: { login: "ada", name: "Ada", avatar_url: null, is_admin: false },
   agents: [{
@@ -93,6 +101,12 @@ export const handlers = [
   ),
   // No art by default: the site draws plain cards, as it does in CI and on forks.
   http.get(url("/art/v1/manifest.json"), () => new HttpResponse(null, { status: 404 })),
+  http.get(url("/api/episodes/:id/replay"), ({ request }) => {
+    const q = new URL(request.url).searchParams;
+    const from = Number(q.get("from") ?? 0);
+    const frames = replayFrames.slice(from, from + Number(q.get("limit") ?? 200));
+    return HttpResponse.json({ total: replayFrames.length, start: from, frames });
+  }),
   http.get(url("/api/episodes/:id/frames"), ({ request }) => {
     const from = Number(new URL(request.url).searchParams.get("from") ?? 0);
     const frames = [0, 1, 2, 3].filter((i) => i >= from).map((i) => frame(i));

@@ -1,151 +1,125 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Frame } from "../../api/client";
-import { FRAME_PAGE, useFrames } from "../../api/hooks";
+import { useEffect, useRef, useState } from "react";
+import { REPLAY_PAGE, SPEEDS, usePlayer, useSpeed, type Speed } from "../../replay/useReplay";
+import { Board } from "./Board";
 import { StatePanel } from "./StatePanel";
 
-const SPEEDS = [1, 2, 4, 8];
-
-/** Step through an ended episode: a scrubber, play/pause at 1-8 frames a second, the arrow
- * keys, and an action log you can click to jump. Frames load 200 at a time. */
+/** An ended episode, played back on a Balatro board. Play runs it on, each action playing out
+ * (a hand's cards scoring one by one); → plays out one action, Shift+→, ← and the scrubber jump.
+ * The action log beside it jumps to any step. */
 export function ReplayViewer({ episodeId, mine = false }: { episodeId: string; mine?: boolean }) {
-  const [i, setI] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(2);
-  const page = Math.floor(i / FRAME_PAGE);
-  // The frame count comes from the server: a tape can be shorter than the episode's step count,
-  // because a refused or engine-error step isn't on it.
-  const { data: first, error: firstError } = useFrames(episodeId, 0, true, mine);
-  const { data, error } = useFrames(episodeId, page, true, mine);
-  const total = first?.total ?? data?.total ?? 1;
-  const last = total - 1;
+  const [speed, setSpeed] = useSpeed();
+  const [text, setText] = useState(false);
+  const p = usePlayer(episodeId, mine, speed);
   const logRef = useRef<HTMLOListElement>(null);
-
-  // Load the next page before the scrubber gets there.
-  const nearEnd = i % FRAME_PAGE > FRAME_PAGE - 40 && (page + 1) * FRAME_PAGE < total;
-  useFrames(episodeId, page + 1, nearEnd, mine);
-
-  const go = useCallback((to: number) => setI(Math.max(0, Math.min(last, to))), [last]);
-
-  // Playback stops by itself at the last step: "running" is derived, never set in an effect.
-  const running = playing && i < last;
-  useEffect(() => {
-    if (!running) return;
-    const timer = setTimeout(() => setI((x) => Math.min(last, x + 1)), 1000 / speed);
-    return () => clearTimeout(timer);
-  }, [running, i, last, speed]);
-
-  const toggle = useCallback(() => {
-    if (running) setPlaying(false);
-    else {
-      if (i >= last) setI(0); // play again from the start
-      setPlaying(true);
-    }
-  }, [running, i, last]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) && target.getAttribute("type") !== "range") return;
-      if (e.key === "ArrowRight") go(i + 1);
-      else if (e.key === "ArrowLeft") go(i - 1);
-      else if (e.key === "Home") go(0);
-      else if (e.key === "End") go(last);
-      else if (e.key === " " && target?.tagName !== "BUTTON") toggle();
+      if (e.key === "ArrowRight") {
+        if (e.shiftKey) p.seek(p.i + 1);
+        else p.next();
+      } else if (e.key === "ArrowLeft") p.seek(p.i - 1);
+      else if (e.key === "Home") p.seek(0);
+      else if (e.key === "End") p.seek(p.last);
+      else if (e.key === " " && target?.tagName !== "BUTTON") p.toggle();
       else return;
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, i, last, toggle]);
+  }, [p]);
 
   useEffect(() => {
     const current = logRef.current?.querySelector<HTMLElement>('[aria-current="step"]');
     current?.scrollIntoView?.({ block: "nearest" });
-  }, [i]);
+  }, [p.i]);
 
-  // Nothing to step through until the server has said how many frames there are.
-  if (!first) {
+  if (!p.scene || !p.frame || p.total === undefined) {
     return (
       <section className="panel" aria-label="Replay">
-        {firstError ? <p className="error">The replay couldn't load.</p> : <p className="muted">Loading the replay…</p>}
+        {p.error ? <p className="error">The replay couldn't load.</p> : <p className="muted">Loading the replay…</p>}
       </section>
     );
   }
 
-  const frame: Frame | undefined = data?.frames.find((f) => f.i === i);
+  const page = Math.floor(p.i / REPLAY_PAGE);
+  const log = Array.from({ length: Math.min(REPLAY_PAGE, p.total - page * REPLAY_PAGE) }, (_, k) =>
+    p.frameAt(page * REPLAY_PAGE + k),
+  ).filter((f) => f?.description);
   return (
     <div className="replay">
-      <section className="panel" aria-label="Replay">
+      <section className="panel board-panel" aria-label="Replay">
         <div className="controls">
-          <button type="button" onClick={() => go(0)} aria-label="First step" disabled={i === 0}>
+          <button type="button" onClick={() => p.seek(0)} aria-label="First step" disabled={p.i === 0}>
             ⏮
           </button>
-          <button type="button" onClick={() => go(i - 1)} aria-label="Previous step" disabled={i === 0}>
+          <button type="button" onClick={() => p.seek(p.i - 1)} aria-label="Previous step" disabled={p.i === 0}>
             ◀
           </button>
-          <button type="button" className="primary" onClick={toggle} aria-pressed={running}>
-            {running ? "Pause" : "Play"}
+          <button type="button" className="primary" onClick={p.toggle} aria-pressed={p.running}>
+            {p.running ? "Pause" : "Play"}
           </button>
-          <button type="button" onClick={() => go(i + 1)} aria-label="Next step" disabled={i === last}>
+          <button type="button" onClick={p.next} aria-label="Next step" disabled={p.i >= p.last && !p.animating}>
             ▶
           </button>
-          <button type="button" onClick={() => go(last)} aria-label="Last step" disabled={i === last}>
+          <button type="button" onClick={() => p.seek(p.last)} aria-label="Last step" disabled={p.i >= p.last}>
             ⏭
           </button>
           <input
             type="range"
             min={0}
-            max={last}
-            value={i}
-            onChange={(e) => go(Number(e.target.value))}
+            max={p.last}
+            value={p.i}
+            onChange={(e) => p.seek(Number(e.target.value))}
             aria-label="Step"
           />
           <span className="small muted" aria-live="polite">
-            step {i} / {last}
+            step {p.i} / {p.last}
           </span>
           <label className="inline small">
             speed
-            <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-              {SPEEDS.map((s) => (
-                <option key={s} value={s}>
-                  {s}×
+            <select
+              value={String(speed)}
+              onChange={(e) => setSpeed(SPEEDS.find((s) => String(s) === e.target.value) ?? 1)}
+            >
+              {SPEEDS.map((s: Speed) => (
+                <option key={s} value={String(s)}>
+                  {s === "instant" ? "Instant" : `${s}×`}
                 </option>
               ))}
             </select>
           </label>
+          <button type="button" className="small" onClick={() => setText((t) => !t)} aria-pressed={text}>
+            Text view
+          </button>
         </div>
-        {error ? (
-          <p className="error">Couldn't load this part of the replay.</p>
-        ) : frame ? (
-          <div style={{ opacity: data ? 1 : 0.5 }}>
-            {frame.description && (
-              <p className="notice" style={{ marginBottom: "0.75rem" }}>
-                <strong>Next:</strong> {frame.description}
-              </p>
-            )}
-            <StatePanel frame={frame} />
-          </div>
+        {p.frame.description && (
+          <p className="next-line">
+            <strong>Next:</strong> {p.frame.description}
+          </p>
+        )}
+        {text ? (
+          <StatePanel frame={p.frame} />
         ) : (
-          <p className="muted">Loading…</p>
+          <Board scene={p.scene} animating={p.animating} speed={speed === "instant" ? 1 : speed} />
         )}
       </section>
       <aside className="panel" aria-label="Actions">
         <h2>Actions</h2>
         <ol className="log" ref={logRef}>
-          {data?.frames
-            .filter((f) => f.description)
-            .map((f) => (
-              <li key={f.i}>
-                <button type="button" onClick={() => go(f.i)} aria-current={f.i === i ? "step" : undefined}>
-                  <span className="i">{f.i}</span>
-                  <span>{f.description}</span>
-                </button>
-              </li>
-            ))}
+          {log.map((f) => (
+            <li key={f!.i}>
+              <button type="button" onClick={() => p.seek(f!.i)} aria-current={f!.i === p.i ? "step" : undefined}>
+                <span className="i">{f!.i}</span>
+                <span>{f!.description}</span>
+              </button>
+            </li>
+          ))}
         </ol>
-        {total > FRAME_PAGE && (
+        {p.total > REPLAY_PAGE && (
           <p className="small muted">
-            Showing steps {page * FRAME_PAGE}–{Math.min(last, (page + 1) * FRAME_PAGE - 1)}.
+            Showing steps {page * REPLAY_PAGE}–{Math.min(p.last, (page + 1) * REPLAY_PAGE - 1)}.
           </p>
         )}
       </aside>

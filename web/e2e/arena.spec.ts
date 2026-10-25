@@ -27,6 +27,10 @@ async function playEpisode(api: APIRequestContext, token: string): Promise<strin
 }
 
 test("sign in, create an agent, play episodes, and watch a replay", async ({ page, request }) => {
+  // The site runs under the production CSP (Caddyfile.local): the board's animations set styles
+  // through the DOM, which it allows, never with inline style elements, which it refuses.
+  const csp: string[] = [];
+  page.on("console", (m) => /Content Security Policy|Refused to/.test(m.text()) && csp.push(m.text()));
   const stamp = Date.now().toString(36);
   const login = `e2e-${stamp}`;
   const slug = `bot-${stamp}`;
@@ -65,15 +69,22 @@ test("sign in, create an agent, play episodes, and watch a replay", async ({ pag
   await row.getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await page.getByRole("link", { name: ids[0]!.slice(0, 8) }).click();
-  await expect(page.getByText("verified by replay")).toBeVisible();
+  await expect(page.getByText("✓ Verified")).toBeVisible();
   await expect(page.getByText("step 0 /", { exact: false })).toBeVisible();
-  await page.keyboard.press("ArrowRight");
+  // The board, then a step jumped (Shift+→) and one played out (→).
+  await expect(page.getByRole("group", { name: /^Jokers / })).toBeVisible();
+  await page.keyboard.press("Shift+ArrowRight");
   await expect(page.getByText("step 1 /", { exact: false })).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByText("step 2 /", { exact: false })).toBeVisible();
   await expect(page.locator(".log [aria-current='step']")).toBeVisible();
 
-  // The tape is public and names the same seed.
+  // The tape is public and names the same seed, shown under Run details.
   const tape = await (await request.get(`/api/episodes/${ids[0]}/tape`)).json();
+  await page.getByText("Run details").click();
   await expect(page.getByText(tape.seed)).toBeVisible();
+
+  expect(csp).toEqual([]);
 
   // Sign out.
   await page.getByRole("button", { name: "Sign out" }).click();

@@ -14,6 +14,7 @@ from arena import schemas
 from arena.db import repo
 from arena.engine.catalog import catalog
 from arena.engine.frames import frames
+from arena.engine.replay import replay
 from arena.engine.spec import ENGINE_VERSION, SEASON, replayable
 from arena.services.episodes import final_of
 from arena.services.leaderboard import agent_summary, agent_tracks, leaderboard
@@ -38,6 +39,8 @@ def episode_summary(row: repo.EpisodeRow, slug: str) -> dict[str, Any]:
         "id": row.id, "agent": slug, "track": row.track, "season": row.season,
         "status": row.status, "t": row.t, "created_at": row.created_at, "ended_at": row.ended_at,
         "final": final_of(row) if row.status == "ended" else None,
+        # Rows from before the column was added were recorded with their season's first release.
+        "engine_version": row.engine_version or row.season,
     }  # fmt: skip
 
 
@@ -57,12 +60,15 @@ def tape_document(row: repo.EpisodeRow) -> dict[str, Any]:
     }  # fmt: skip
 
 
-async def frames_document(row: repo.EpisodeRow, start: int, limit: int) -> dict[str, Any]:
+async def frames_document(
+    row: repo.EpisodeRow, start: int, limit: int, build: Any = frames
+) -> dict[str, Any]:
+    """Frames of an ended episode, from ``frames`` or ``replay``."""
     if not replayable(row.season):
         raise HTTPException(409, f"replays of season {row.season} episodes aren't served yet")
     tape = row.tape or []
     # Replaying is CPU work: keep it off the event loop.
-    out = await anyio.to_thread.run_sync(frames, row.spec, tape, start, limit)
+    out = await anyio.to_thread.run_sync(build, row.spec, tape, start, limit)
     return {"total": len(tape) + 1, "start": start, "frames": out}
 
 
@@ -173,6 +179,24 @@ async def episode_frames(
     if row.status != "ended":
         raise HTTPException(404, "replays open once the episode has ended")
     doc = await frames_document(row, start, limit)
+    response.headers["Cache-Control"] = IMMUTABLE
+    return doc
+
+
+@router.get("/episodes/{episode_id}/replay", response_model=schemas.ReplayDoc)
+async def episode_replay(
+    request: Request,
+    response: Response,
+    episode_id: uuid.UUID,
+    start: int = Query(0, ge=0, alias="from"),
+    limit: int = Query(200, ge=1, le=200),
+) -> dict[str, Any]:
+    """The frames with every card's id and each action's outcome: a play's scoring events,
+    a cash out's money, changed hand levels."""
+    row, _ = await anyio.to_thread.run_sync(_public_episode, request, episode_id)
+    if row.status != "ended":
+        raise HTTPException(404, "replays open once the episode has ended")
+    doc = await frames_document(row, start, limit, replay)
     response.headers["Cache-Control"] = IMMUTABLE
     return doc
 
