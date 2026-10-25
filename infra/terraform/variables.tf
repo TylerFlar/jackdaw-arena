@@ -71,10 +71,14 @@ variable "admin_logins" {
   default     = ["TylerFlar"]
 }
 
-variable "github_repo" {
-  description = "owner/name of the repository whose workflows may deploy."
+variable "github_subject_prefix" {
+  description = "The repository part of the OIDC subject GitHub gives this repository's workflows. New repositories get immutable subjects, which carry the owner's and the repository's numeric IDs, so a renamed or re-created repository can't reuse them. `gh api repos/OWNER/REPO/actions/oidc/customization/sub` shows it."
   type        = string
-  default     = "TylerFlar/jackdaw-arena"
+  default     = "repo:TylerFlar@18598509/jackdaw-arena@1432824252"
+  validation {
+    condition     = startswith(var.github_subject_prefix, "repo:")
+    error_message = "The subject prefix starts with repo:, e.g. repo:OWNER@ID/REPO@ID."
+  }
 }
 
 variable "github_environment" {

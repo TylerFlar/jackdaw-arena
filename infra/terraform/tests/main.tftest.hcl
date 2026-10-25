@@ -253,11 +253,11 @@ run "defaults" {
 
   # --- GitHub Actions ---
   assert {
-    condition     = jsondecode(aws_iam_role.deploy.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:TylerFlar/jackdaw-arena:environment:production"
+    condition     = jsondecode(aws_iam_role.deploy.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:TylerFlar@18598509/jackdaw-arena@1432824252:environment:production"
     error_message = "Only the repository's production environment may deploy."
   }
   assert {
-    condition     = jsondecode(aws_iam_role.ci.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:TylerFlar/jackdaw-arena:ref:refs/heads/main"
+    condition     = jsondecode(aws_iam_role.ci.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:TylerFlar@18598509/jackdaw-arena@1432824252:ref:refs/heads/main"
     error_message = "Only workflows on main may use the CI role."
   }
   assert {

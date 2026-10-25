@@ -21,8 +21,8 @@ locals {
 
   github_trust = {
     for role, subject in {
-      deploy = "repo:${var.github_repo}:environment:${var.github_environment}"
-      ci     = "repo:${var.github_repo}:ref:refs/heads/main"
+      deploy = "${var.github_subject_prefix}:environment:${var.github_environment}"
+      ci     = "${var.github_subject_prefix}:ref:refs/heads/main"
     } :
     role => jsonencode({
       Version = "2012-10-17"

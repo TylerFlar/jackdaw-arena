@@ -126,7 +126,7 @@ docker compose --profile e2e up -d --build --wait
 docker compose --profile e2e down -v
 ```
 
-Infrastructure checks need no AWS account. The tests mock the provider:
+Infrastructure checks need no AWS account. The tests mock the providers, which needs Terraform 1.17 or later:
 
 ```bash
 cd infra/terraform
