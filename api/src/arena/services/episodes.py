@@ -391,6 +391,21 @@ class EpisodeService:
                 "last": last, "final": None,
             }  # fmt: skip
 
+    def live(self, agent: repo.Agent, eid: uuid.UUID) -> LiveEpisode:
+        """The agent's running episode as this process holds it, rebuilt if needed. For
+        in-process players (the house baselines): read it, don't step it directly."""
+        with self._lock:
+            live = self._get(eid, agent.id)
+            if live is not None:
+                return live
+            with self.engine.connect() as conn:
+                rows = repo.episodes_by_ids(conn, [eid], agent.id)
+            if not rows or rows[0].status != "running":
+                raise ProtocolError(404, "not_found", "no running episode for this agent")
+            live = self._rebuild(rows[0])
+            self._put(eid, agent.id, live)
+            return live
+
     def running(self, agent: repo.Agent) -> list[dict[str, Any]]:
         with self.engine.connect() as conn:
             rows = repo.running_of(conn, agent.id)

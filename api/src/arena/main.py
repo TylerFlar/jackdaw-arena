@@ -7,6 +7,7 @@ import hmac
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -14,10 +15,11 @@ from sqlalchemy import Engine
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from arena import __version__
+from arena.auth.oauth import SignIn
 from arena.clock import Clock, utcnow
 from arena.db.engine import make_engine
 from arena.engine.live import EnvFactory, gym_env
-from arena.routes import agent_api, health
+from arena.routes import account, agent_api, auth, events, health, public
 from arena.services.episodes import EpisodeService, Limits, ProtocolError
 from arena.services.seeds import SeedSource, secure_seeds
 from arena.settings import Settings, load_settings
@@ -34,13 +36,16 @@ def create_app(
     clock: Clock = utcnow,
     seeds: SeedSource = secure_seeds,
     env_factory: EnvFactory = gym_env,
+    http: httpx.Client | None = None,
 ) -> FastAPI:
     settings = settings or load_settings()
     engine = engine or make_engine(settings)
+    http = http or httpx.Client(follow_redirects=False)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
+        http.close()
         engine.dispose()
 
     app = FastAPI(
@@ -55,6 +60,7 @@ def create_app(
     app.state.settings = settings
     app.state.engine = engine
     app.state.clock = clock
+    app.state.signin = SignIn(settings, http)
     app.state.episodes = EpisodeService(
         engine,
         clock,
@@ -116,4 +122,9 @@ def create_app(
 
     app.include_router(health.router)
     app.include_router(agent_api.router)
+    app.include_router(public.router)
+    app.include_router(account.router)
+    app.include_router(account.admin)
+    app.include_router(auth.router)
+    app.include_router(events.router)
     return app

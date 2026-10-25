@@ -142,3 +142,49 @@ def agents(engine: Engine, clock: FakeClock) -> Agents:
 
 def bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def sign_in(engine: Engine, clock: FakeClock, settings: Settings):
+    """Sign a TestClient in as ``user`` by creating a session directly."""
+    import secrets
+    from datetime import timedelta
+
+    def go(client: TestClient, user: repo.User) -> TestClient:
+        token = secrets.token_urlsafe(32)
+        with engine.begin() as conn:
+            repo.create_session(conn, digest(token), user.id, clock(), clock() + timedelta(days=1))
+        client.cookies.set(settings.session_cookie, token)
+        return client
+
+    return go
+
+
+@pytest.fixture
+def ended(engine: Engine, clock: FakeClock):
+    """Insert an ended episode with a chosen outcome (for statistics tests)."""
+    from arena.engine.spec import ENGINE_VERSION
+
+    def add(agent: repo.Agent, rounds: int, ante: int = 1, won: bool = False,
+            reason: str = "lost", track: str = "red-1", t: int = 10,
+            verified: bool = True) -> uuid.UUID:  # fmt: skip
+        eid = uuid.uuid4()
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "INSERT INTO episodes (id, agent_id, track, client_key, season, action_version,"
+                    " seed, rng_seed, back, stake, max_steps, end_on_win, max_free_moves,"
+                    " reward_kind, status, t, trace, created_at, last_step_at, ended_at,"
+                    " end_reason, won, ante_reached, rounds_beaten, tape, final_state_hash,"
+                    " verified) VALUES (:id, :a, :track, :key, :season, 2, :seed, 1, 'b_red', 1,"
+                    " 2000, true, 10, 'sparse', 'ended', :t, :trace, :now, :now, :now, :reason,"
+                    " :won, :ante, :rounds, '[]', 'x', :verified)"
+                ),
+                {"id": eid, "a": agent.id, "track": track, "key": uuid.uuid4(),
+                 "season": ENGINE_VERSION, "seed": uuid.uuid4().hex[:16], "t": t,
+                 "trace": b"\0\0" * t, "now": clock(), "reason": reason, "won": won,
+                 "ante": ante, "rounds": rounds, "verified": verified},
+            )  # fmt: skip
+        return eid
+
+    return add

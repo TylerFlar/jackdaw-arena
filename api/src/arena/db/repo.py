@@ -546,7 +546,9 @@ def ended_episodes_of(
     return [_episode(r) for r in conn.execute(text(sql), params)]
 
 
-def board_rows(conn: Connection, track: str, season: str) -> list[dict[str, Any]]:
+def board_rows(
+    conn: Connection, track: str, season: str, agent_id: uuid.UUID | None = None
+) -> list[dict[str, Any]]:
     """Per-agent sums over ended episodes, the input to the leaderboard statistics. A refused
     episode scores zero, as the repo's own evaluation scores it."""
     rows = conn.execute(
@@ -563,11 +565,31 @@ def board_rows(conn: Connection, track: str, season: str) -> list[dict[str, Any]
             "sum(CASE WHEN e.end_reason IN ('forfeit', 'idle') THEN 1 ELSE 0 END) AS forfeited, "
             "sum(CASE WHEN e.verified THEN 0 ELSE 1 END) AS unverified "
             "FROM episodes e WHERE e.track = :track AND e.season = :season "
-            "AND e.status = 'ended' GROUP BY e.agent_id"
+            "AND e.status = 'ended' "
+            + ("AND e.agent_id = :agent " if agent_id is not None else "")
+            + "GROUP BY e.agent_id"
         ),
-        {"track": track, "season": season},
+        {"track": track, "season": season, "agent": agent_id},
     )
     return [dict(r._mapping) for r in rows]
+
+
+def histogram(conn: Connection, agent_id: uuid.UUID, track: str, season: str) -> list[int]:
+    """Ended episodes by blinds beaten (index = blinds), refused episodes counted at zero."""
+    rows = conn.execute(
+        text(
+            "SELECT CASE WHEN end_reason = 'refused' THEN 0 ELSE rounds_beaten END AS b, "
+            "count(*) FROM episodes WHERE agent_id = :a AND track = :t AND season = :s "
+            "AND status = 'ended' GROUP BY 1 ORDER BY 1"
+        ),
+        {"a": agent_id, "t": track, "s": season},
+    ).all()
+    if not rows:
+        return []
+    out = [0] * (max(int(b or 0) for b, _ in rows) + 1)
+    for b, n in rows:
+        out[int(b or 0)] += int(n)
+    return out
 
 
 def agents_by_ids(conn: Connection, ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, Agent]:

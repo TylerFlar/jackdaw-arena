@@ -7,12 +7,12 @@ requires-python = ">=3.13,<3.15"
 license = "MIT"
 authors = [{name = "Tyler Flar"}]
 dependencies = [
-    "authlib>=1.6",
     "fastapi>=0.120",
     "httpx>=0.28",
     "itsdangerous>=2.2",
     # The engine. A benchmark pins one release: its outcomes define the season.
     "jackdaw==0.2.0",
+    "joserfc>=1.2",
     "numpy>=2.0",
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.6",
@@ -70,3 +70,6 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]

@@ -94,7 +94,6 @@ name = "arena-api"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "authlib" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "itsdangerous" },
@@ -104,6 +103,7 @@ dependencies = [
     { name = "jackdaw", version = "0.2.0", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-manylinux_2_28_aarch64.whl" }, marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" },
     { name = "jackdaw", version = "0.2.0", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-manylinux_2_28_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "jackdaw", version = "0.2.0", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-win_amd64.whl" }, marker = "sys_platform == 'win32'" },
+    { name = "joserfc" },
     { name = "numpy" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
@@ -130,7 +130,6 @@ dev = [
 requires-dist = [
     { name = "aurora-dsql-python-connector", marker = "extra == 'aws'", specifier = ">=0.2" },
     { name = "aurora-dsql-sqlalchemy", marker = "extra == 'aws'", specifier = ">=1.3" },
-    { name = "authlib", specifier = ">=1.6" },
     { name = "boto3", marker = "extra == 'aws'", specifier = ">=1.40" },
     { name = "fastapi", specifier = ">=0.120" },
     { name = "httpx", specifier = ">=0.28" },
@@ -141,6 +140,7 @@ requires-dist = [
     { name = "jackdaw", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-manylinux_2_28_aarch64.whl" },
     { name = "jackdaw", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-manylinux_2_28_x86_64.whl" },
     { name = "jackdaw", marker = "sys_platform == 'win32'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-win_amd64.whl" },
+    { name = "joserfc", specifier = ">=1.2" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic-settings", specifier = ">=2.6" },
@@ -236,19 +236,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/24/09/90232380a15f9f93b109fa7a95fda3dc17b1209efd141161b9ba7ba64c87/aurora_dsql_sqlalchemy-1.3.0.tar.gz", hash = "sha256:6d3bce50ff58d3114ded4d6516f8d890cd89f4ed42e0081de83a256e28581a03", size = 87385, upload-time = "2026-09-24T06:45:08.204Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/44/fa/7e80a0ca48d9eb44910cb254eebc32ca5e186fa5cedce67f44905a147f66/aurora_dsql_sqlalchemy-1.3.0-py3-none-any.whl", hash = "sha256:4095923dae398f2d794ba2f07d3bb3edb0b9933f31f7a88aa8a4bd04e319e6e9", size = 12562, upload-time = "2026-09-24T06:45:06.87Z" },
-]
-
-[[package]]
-name = "authlib"
-version = "1.9.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cryptography" },
-    { name = "joserfc" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/dc/087c08741a98d234c9b98beef8a28d3c309f814d14b6156422c5815bf6d6/authlib-1.9.1.tar.gz", hash = "sha256:5c7d9848f47cac340f060f76ae0bc09b59f5c8e89cc1bb032d4370a0c55b5974", size = 182700, upload-time = "2026-10-14T14:17:52.307Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/44/a46089266de32a0d809023b6bf31b80a1f26a46954446a7ce695a565cbea/authlib-1.9.1-py2.py3-none-any.whl", hash = "sha256:8b9be8b1e5174dcbf5520e984f1a22dc2edae5b6e40a61d4cedbf86b97e9e69b", size = 266042, upload-time = "2026-10-14T14:17:50.695Z" },
 ]
 
 [[package]]
