@@ -268,3 +268,12 @@ jobs:
       - run: uv run pytest -m dsql tests/test_dsql.py
         env:
           ARENA_TEST_DSQL_ENDPOINT: ${{ vars.DSQL_CI_ENDPOINT }}
+
+  deploy:
+    # A push to main is a release or a hotfix: once everything above has passed, it goes out.
+    needs: [version, api, client, web, infra, image, e2e, dsql]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write # OIDC: the deploy role
+    uses: ./.github/workflows/deploy.yml
