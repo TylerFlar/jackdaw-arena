@@ -22,7 +22,8 @@ def main(argv: list[str] | None = None) -> None:
     house.add_argument("--episodes", type=int, default=100)
     house.add_argument("--track", default="red-1")
     house.add_argument("--seed", type=int, default=0)
-    sub.add_parser("openapi", help="print the OpenAPI document (no database needed)")
+    oa = sub.add_parser("openapi", help="print the OpenAPI document (no database needed)")
+    oa.add_argument("-o", "--out", help="write it to this file (LF line endings) instead")
     serve = sub.add_parser("serve", help="run the API with uvicorn")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
@@ -46,7 +47,12 @@ def main(argv: list[str] | None = None) -> None:
 
         # Engines connect lazily: describing the API never touches a database.
         app = create_app(Settings(env="dev"), engine=create_engine("postgresql+psycopg://"))
-        print(json.dumps(app.openapi(), indent=1, sort_keys=True))
+        doc = json.dumps(app.openapi(), indent=1, sort_keys=True) + "\n"
+        if args.out:
+            with open(args.out, "w", encoding="utf-8", newline="\n") as f:
+                f.write(doc)
+        else:
+            print(doc, end="")
         return
 
     from arena.db.engine import make_engine

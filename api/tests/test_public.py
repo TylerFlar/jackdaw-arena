@@ -53,7 +53,7 @@ def test_leaderboard_statistics_and_sections(client, agents, ended, budget_3):
         conn.execute(text("UPDATE agents SET hidden = true WHERE slug = 'hidden-run'"))
 
     r = client.get("/api/leaderboard")
-    assert r.headers["cache-control"] == "public, max-age=60"
+    assert r.headers["cache-control"] == "public, max-age=0, s-maxage=60"
     board = r.json()
     assert board["k"] == 3
     ranked = {row["agent"]["slug"]: row for row in board["ranked"]}
@@ -118,7 +118,7 @@ def test_running_episodes_are_public_but_keep_their_secrets(client, agents):
     eid = r.json()["episodes"][0]["id"]
     pub = client.get(f"/api/episodes/{eid}")
     assert pub.json()["status"] == "running" and pub.json()["final"] is None
-    assert pub.headers["cache-control"] == "public, max-age=5"
+    assert pub.headers["cache-control"] == "public, max-age=0, s-maxage=5"
     assert client.get(f"/api/episodes/{eid}/frames").status_code == 404
     assert client.get(f"/api/episodes/{eid}/tape").status_code == 404
 

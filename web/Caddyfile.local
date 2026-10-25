@@ -1,0 +1,14 @@
+# CloudFront, played locally: one origin, the API behind /api, /auth and /healthz, the SPA
+# everywhere else (unknown paths fall back to index.html, as the CloudFront Function does).
+:8080 {
+	encode zstd gzip
+	@api path /api/* /auth/* /healthz /healthz/*
+	handle @api {
+		reverse_proxy api:8000
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

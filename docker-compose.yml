@@ -1,9 +1,15 @@
 # Local development and end-to-end tests.
 #
-#   docker compose up -d db            # Postgres for `uv run pytest` (api/)
-#   docker compose --profile e2e up    # the whole stack plus Playwright (see web/e2e)
+#   docker compose up -d db                          # Postgres for `uv run pytest` (api/)
+#   (cd web && pnpm build)                           # the SPA the e2e stack serves
+#   ARENA_DB_PORT=54330 docker compose -p arena-e2e --profile e2e up -d --build --wait
+#   (cd web && pnpm e2e)                             # Playwright, from the host
+#   ARENA_DB_PORT=54330 docker compose -p arena-e2e --profile e2e down -v
 #
-# Postgres 16 matches Aurora DSQL's PostgreSQL compatibility level.
+# Postgres 16 matches Aurora DSQL's PostgreSQL compatibility level. The e2e profile stands in for
+# AWS: Caddy plays CloudFront (one origin, /api and /auth to the API), and a mock OpenID provider
+# plays GitHub. The browser reaches the IdP at localhost:8081, the API at oidc:8080, exercising
+# the same issuer mapping a split network needs.
 name: jackdaw-arena
 
 services:
@@ -14,7 +20,7 @@ services:
       POSTGRES_PASSWORD: arena
       POSTGRES_DB: arena
     ports:
-      - "127.0.0.1:54329:5432"
+      - "127.0.0.1:${ARENA_DB_PORT:-54329}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U arena -d arena"]
       interval: 2s
@@ -22,6 +28,55 @@ services:
       retries: 30
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  oidc:
+    profiles: [e2e]
+    image: ghcr.io/navikt/mock-oauth2-server:6.1.3
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      JSON_CONFIG: '{"interactiveLogin": true}'
+
+  migrate:
+    profiles: [e2e]
+    build: ./api
+    image: arena-api:dev
+    command: ["arena", "migrate"]
+    environment: &api-env
+      ARENA_ENV: dev
+      ARENA_DATABASE_URL: postgresql+psycopg://arena:arena@db:5432/arena
+      ARENA_PUBLIC_URL: http://localhost:8080
+      ARENA_SESSION_SECRET: e2e-only-session-secret
+      ARENA_OIDC_ISSUER: http://localhost:8081/default
+      ARENA_OIDC_INTERNAL_ISSUER: http://oidc:8080/default
+      ARENA_OIDC_CLIENT_ID: arena
+      ARENA_OIDC_CLIENT_SECRET: e2e
+      ARENA_OIDC_NAME: Dev login
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    profiles: [e2e]
+    image: arena-api:dev
+    environment: *api-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      oidc:
+        condition: service_started
+
+  web:
+    profiles: [e2e]
+    image: public.ecr.aws/docker/library/caddy:2
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./web/Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - ./web/dist:/srv:ro
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata:

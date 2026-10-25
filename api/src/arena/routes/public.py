@@ -24,7 +24,9 @@ IMMUTABLE = "public, max-age=31536000, immutable"
 
 
 def _cache(response: Response, seconds: int) -> None:
-    response.headers["Cache-Control"] = f"public, max-age={seconds}"
+    """Cache at the edge (CloudFront) for ``seconds``, but not in browsers: a researcher who just
+    finished a run should see it on the next page load, not a minute later."""
+    response.headers["Cache-Control"] = f"public, max-age=0, s-maxage={seconds}"
 
 
 def visible(agent: repo.Agent | None) -> bool:

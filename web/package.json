@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
-    "openapi": "openapi-typescript openapi.json -o src/api/schema.d.ts --default-non-nullable false",
+    "openapi": "cd ../api && uv run arena openapi --out ../web/openapi.json && cd ../web && openapi-typescript openapi.json -o src/api/schema.d.ts --default-non-nullable false",
     "e2e": "playwright test"
   },
   "dependencies": {
