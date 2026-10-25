@@ -3,7 +3,7 @@
 
 # The first image, pushed before the full apply (Lambda needs it to exist). Deploys replace the
 # functions' code afterwards without Terraform.
-api_image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/arena-api:0123456789abcdef0123456789abcdef01234567"
+api_image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/arena-api:COMMIT_SHA"
 
 # Alarms and the monthly budget email here (SNS asks you to confirm twice: once per region).
 alert_email = "you@example.com"
