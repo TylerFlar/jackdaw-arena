@@ -201,3 +201,86 @@ def test_token_lookup(monkeypatch, tmp_path):
     f.unlink()
     with pytest.raises(ArenaError):
         find_token()
+
+
+# --- verify: with whichever jackdaw is installed ----------------------------------------------
+
+
+def fake_jackdaw(monkeypatch, version: str, *, rules: str = "same") -> None:
+    """A stand-in jackdaw: its final state hash is a digest of the actions, with "changed"
+    rules mixed in, and a "refused" action an engine of that version won't play."""
+    import hashlib
+    import sys
+    import types
+
+    class Game:
+        def __init__(self) -> None:
+            self.played: list[str] = []
+
+        @classmethod
+        def new(cls, back: str, stake: int, seed: str) -> Game:
+            return cls()
+
+        def step(self, action: object) -> None:
+            if action == ["Refused"]:
+                raise RuntimeError("not legal here")
+            self.played.append(json.dumps(action))
+
+        def state_hash(self) -> str:
+            extra = "" if rules == "same" else rules
+            return hashlib.sha256(("|".join(self.played) + extra).encode()).hexdigest()
+
+    core = types.ModuleType("jackdaw._core")
+    core.__version__ = version
+    public = types.ModuleType("jackdaw.core")
+    public.Game = Game
+    package = types.ModuleType("jackdaw")
+    package._core, package.core = core, public
+    for name, module in (("jackdaw", package), ("jackdaw._core", core), ("jackdaw.core", public)):
+        monkeypatch.setitem(sys.modules, name, module)
+
+
+def a_tape(actions: list[object], version: str = "0.2.0") -> dict:
+    import hashlib
+
+    digest = hashlib.sha256("|".join(json.dumps(a) for a in actions).encode()).hexdigest()
+    return {"id": "e1", "engine_version": version, "back": "b_red", "stake": 1, "seed": "S",
+            "tape": actions, "final_state_hash": digest}  # fmt: skip
+
+
+def test_verify_accepts_any_version_that_reproduces_the_final_state(monkeypatch):
+    from jackdaw_arena.cli import verify
+
+    tape = a_tape([["SkipBlind"], ["PlayHand", [0, 1]]])
+    fake_jackdaw(monkeypatch, "0.2.0")
+    assert verify(tape).status == "verified"
+    fake_jackdaw(monkeypatch, "0.2.1")  # a release that kept the rules
+    v = verify(tape)
+    assert v.status == "verified" and "with 0.2.1, recorded with 0.2.0" in v.message
+
+
+def test_verify_tells_a_wrong_record_from_a_rules_change(monkeypatch):
+    from jackdaw_arena.cli import verify
+
+    tape = a_tape([["SkipBlind"]])
+    tape["final_state_hash"] = "0" * 64  # the record doesn't match its own engine
+    fake_jackdaw(monkeypatch, "0.2.0")
+    assert verify(tape).status == "mismatch"
+    fake_jackdaw(monkeypatch, "0.3.0", rules="changed")
+    v = verify(a_tape([["SkipBlind"]]))
+    assert v.status == "inconclusive" and "--tag v0.2.0" in v.message
+    v = verify(a_tape([["Refused"]]))  # 0.3.0 won't even play it
+    assert v.status == "inconclusive" and "won't play" in v.message
+
+
+def test_verify_exit_codes(monkeypatch, tmp_path):
+    from jackdaw_arena.cli import main
+
+    fake_jackdaw(monkeypatch, "0.2.1")
+    path = tmp_path / "tape.json"
+    wrong = {**a_tape([["SkipBlind"]]), "final_state_hash": "x"}
+    for tape, code in ((a_tape([["SkipBlind"]]), 0), (wrong, 2)):
+        path.write_text(json.dumps(tape))
+        with pytest.raises(SystemExit) as e:
+            main(["--url", URL, "verify", str(path)])
+        assert e.value.code == code

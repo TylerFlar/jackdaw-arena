@@ -26,3 +26,5 @@ Every episode an agent starts counts, and each agent has a fixed budget per trac
 jackdaw-arena tape <episode-id> -o tape.json
 jackdaw-arena verify tape.json      # needs jackdaw installed
 ```
+
+`verify` replays the tape with the jackdaw you have installed and compares the final state hash with the published one. Any release that reproduces it verifies the episode; one that doesn't may have changed the rules, so `verify` then names the release the tape was recorded with, which settles it.

@@ -6,6 +6,7 @@
     jackdaw-arena eval --policy mypkg.agent:make_chooser --episodes 500
     jackdaw-arena tape EPISODE_ID -o tape.json  # an ended episode's full record
     jackdaw-arena verify tape.json              # replay it with jackdaw, check the hash
+                                                # (exit 0 verified, 1 mismatch, 2 inconclusive)
 
 The token comes from ``$ARENA_TOKEN`` or ``~/.jackdaw-arena/token``; the server from
 ``$ARENA_URL`` (default https://arena.tylerflar.com). Output is plain ASCII.
@@ -17,6 +18,7 @@ import argparse
 import importlib
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -32,24 +34,51 @@ def load_chooser(target: str) -> Any:
     return getattr(importlib.import_module(module), name)()
 
 
-def verify(tape: dict[str, Any]) -> bool:
-    """Replay a tape on a fresh run with jackdaw and compare the final state hash."""
+def _install(version: str) -> str:
+    return f"uv add git+https://github.com/TylerFlar/jackdaw-balatro.git --tag v{version}"
+
+
+@dataclass(frozen=True)
+class Verdict:
+    """``verified``: the installed jackdaw replays the tape to the published final state.
+    ``mismatch``: the tape's own jackdaw version doesn't, so the record is wrong.
+    ``inconclusive``: another version doesn't, and its rules may differ from the tape's."""
+
+    status: str
+    message: str
+
+
+def verify(tape: dict[str, Any]) -> Verdict:
+    """Replay a tape on a fresh run with the installed jackdaw and compare the final state hash.
+
+    A matching hash proves the result whichever jackdaw replayed it: a release that kept the
+    rules (a documentation release, say) verifies older tapes too. Only the version the tape
+    was recorded with can show a record wrong."""
+    recorded = tape["engine_version"]
     try:
         from jackdaw import _core
+        from jackdaw.core import Game
     except ImportError:
-        version = tape.get("engine_version", "0.2.0")
-        raise SystemExit(
-            "verify needs jackdaw itself: "
-            f"uv add git+https://github.com/TylerFlar/jackdaw-balatro.git --tag v{version}"
-        ) from None
-    if _core.__version__ != tape["engine_version"]:
-        raise SystemExit(
-            f"this tape is from jackdaw {tape['engine_version']}; installed is {_core.__version__}"
-        )
-    game = _core.Game.new(tape["back"], int(tape["stake"]), tape["seed"], None)
-    for line in tape["tape"]:
-        game.step(json.dumps(line))
-    return game.state_hash() == tape["final_state_hash"]
+        raise SystemExit(f"verify needs jackdaw itself: {_install(recorded)}") from None
+    installed = _core.__version__
+    actions = len(tape["tape"])
+    try:
+        game = Game.new(tape["back"], int(tape["stake"]), tape["seed"])
+        for action in tape["tape"]:
+            game.step(action)
+        same, why = game.state_hash() == tape["final_state_hash"], "a different final state"
+    except Exception as exc:  # noqa: BLE001 - an action this engine won't play
+        same, why = False, f"an action it won't play ({type(exc).__name__})"
+    if same:
+        note = "" if installed == recorded else f" with {installed}, recorded with {recorded}"
+        return Verdict("verified", f"verified ({actions} actions{note})")
+    if installed == recorded:
+        return Verdict("mismatch", f"MISMATCH: jackdaw {installed} reaches {why}")
+    return Verdict(
+        "inconclusive",
+        f"not reproduced: jackdaw {installed} reaches {why}, but the tape was recorded with "
+        f"{recorded}, whose rules may differ. Check with that version: {_install(recorded)}",
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -114,9 +143,9 @@ def main(argv: list[str] | None = None) -> None:
                 if path.exists()
                 else client.tape(args.target)
             )
-            ok = verify(tape)
-            print(f"{tape['id']}: {'verified' if ok else 'MISMATCH'} ({len(tape['tape'])} actions)")
-            sys.exit(0 if ok else 1)
+            verdict = verify(tape)
+            print(f"{tape['id']}: {verdict.message}")
+            sys.exit({"verified": 0, "mismatch": 1}.get(verdict.status, 2))
     except ArenaError as exc:
         raise SystemExit(f"error: {exc}") from None
     finally:

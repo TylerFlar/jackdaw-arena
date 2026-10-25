@@ -24,12 +24,14 @@ export function EpisodePage() {
 
   const final = ep?.final;
   const tapeUrl = mine ? `/api/me/episodes/${id}/tape` : `/api/episodes/${id}/tape`;
+  // Any jackdaw release that reproduces the final state verifies it; the tape's own release
+  // (recorded with ep.season) always does.
   const verify = final
-    ? `jackdaw-arena verify ${id}\n# or, by hand with jackdaw ${ep?.season}:\n` +
-      `from jackdaw import _core; import json\n` +
+    ? `jackdaw-arena verify ${id}\n# or by hand, with jackdaw (this tape was recorded with ${ep?.season}):\n` +
+      `import json\nfrom jackdaw.core import Game\n` +
       `tape = json.load(open("tape.json"))\n` +
-      `g = _core.Game.new(tape["back"], tape["stake"], tape["seed"], None)\n` +
-      `for a in tape["tape"]: g.step(json.dumps(a))\n` +
+      `g = Game.new(tape["back"], tape["stake"], tape["seed"])\n` +
+      `for a in tape["tape"]: g.step(a)\n` +
       `assert g.state_hash() == tape["final_state_hash"]`
     : "";
 
