@@ -22,6 +22,22 @@ describe("leaderboard", () => {
     expect(within(house).getByText("HOUSE-SMART")).toBeInTheDocument();
   });
 
+  it("lays every section on one column grid, so the interval marks line up", async () => {
+    const { container } = renderAt("/", routes);
+    await screen.findByRole("region", { name: "Ranked" });
+    const grids = [...container.querySelectorAll("table")].map((t) => ({
+      board: t.classList.contains("board"),
+      cols: [...t.querySelectorAll("col")].map((c) => c.className),
+    }));
+    expect(grids).toHaveLength(3);
+    const tail = ["", "col-n", "col-blinds", "col-ci", "col-ante", "col-win", "col-best"];
+    expect(grids[0]).toEqual({ board: true, cols: ["col-rank", ...tail] });
+    expect(grids.slice(1)).toEqual([
+      { board: true, cols: tail },
+      { board: true, cols: tail },
+    ]);
+  });
+
   it("explains an empty board", async () => {
     server.use(
       http.get(url("/api/leaderboard"), () =>

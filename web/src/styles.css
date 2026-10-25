@@ -387,6 +387,45 @@ tr:last-child td {
   font-variant-numeric: tabular-nums;
   width: 2.5rem;
 }
+/* The leaderboard's sections share one column grid: the agent column takes what the fixed
+   columns leave (less the rank column, in the ranked table), so the rest line up. Narrow
+   screens scroll the table rather than squeeze it. */
+table.board {
+  table-layout: fixed;
+  min-width: 57rem;
+}
+.board .col-rank {
+  width: 3rem;
+}
+.board .col-n {
+  width: 6.5rem;
+}
+.board .col-blinds {
+  width: 8.5rem;
+}
+.board .col-ci {
+  width: calc(132px + 1.2rem); /* the interval mark and the cell's padding */
+}
+.board .col-ante {
+  width: 6.5rem;
+}
+.board .col-win {
+  width: 6rem;
+}
+.board .col-best {
+  width: 6rem;
+}
+.board .agent-cell {
+  min-width: 0;
+}
+.board .agent-cell .who {
+  min-width: 0;
+}
+.board .agent-cell .who > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .agent-cell {
   display: flex;
   align-items: center;

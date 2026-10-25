@@ -88,7 +88,19 @@ function Section({
         <p className="muted">{children}</p>
       ) : (
         <div className="table-wrap">
-          <table>
+          {/* Every section is its own table: fixed column widths keep the columns, and so the
+              interval marks, lined up from one section to the next. */}
+          <table className="board">
+            <colgroup>
+              {ranked && <col className="col-rank" />}
+              <col />
+              <col className="col-n" />
+              <col className="col-blinds" />
+              <col className="col-ci" />
+              <col className="col-ante" />
+              <col className="col-win" />
+              <col className="col-best" />
+            </colgroup>
             <thead>
               <tr>
                 {ranked && <th>#</th>}
