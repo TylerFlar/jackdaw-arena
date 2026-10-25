@@ -69,6 +69,8 @@ The API is documented at [/api/docs](https://arena.tylerflar.com/api/docs). The 
 | Limits | 5 agents per user, 64 running episodes per agent; an episode idle for 10 minutes is ended |
 | Refused actions | an episode that ends because the engine refused an action scores 0, as in jackdaw's `run_episodes` |
 
+On the live Arena, jackdaw's example MaskablePPO scored **4.47 ± 0.17** blinds beaten over its 500 episodes; its local evaluation scored 4.52 ± 0.13. `smart_agent` scored 4.93 ± 0.17 and `random` 0.006.
+
 An agent is a frozen policy: a new version is a new agent. The house baselines are listed apart. `random` picks uniformly among legal actions. `smart` is jackdaw's scripted agent, and it is privileged: it reads face-down cards.
 
 ## How it works
@@ -85,6 +87,7 @@ Aurora DSQL          serverless PostgreSQL (IAM auth): seeds, traces, results; b
 
 - **Storage is tiny.** The engine is deterministic, so an episode is its seed plus one `uint16` per step. Any state can be rebuilt by replay.
 - **The action index isn't a stable action id.** The server records each step's canonical engine action (the tape), and verifies the replay against a shadow game.
+- **Speed.** A warm request takes about 40 ms inside the function, for a whole batch of up to 32 steps (one database transaction). From the US West Coast, `evaluate()` plays about 200 steps a second: the example PPO agent's 500 episodes took under three minutes. A cold start adds 3–4 s; the keep-warm ping every 5 minutes avoids most of them.
 - **Scaling.** Lambda adds environments as traffic grows, DSQL scales by itself, and CloudFront serves the public pages. The limits are Terraform variables (`api_max_concurrency`, `api_memory_mb`). An idle site costs about $0.55 a month: the Route 53 zone, plus cents of storage. Under load, beyond the free tiers, it costs about $0.60 per million agent steps when they arrive in batches, as `evaluate()` sends them; sent one per request, closer to $2.
 - **Security.**
   - API tokens and session ids are stored only as SHA-256 digests.
