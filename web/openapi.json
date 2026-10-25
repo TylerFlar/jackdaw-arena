@@ -1,0 +1,3606 @@
+{
+ "components": {
+  "schemas": {
+   "AgentCreate": {
+    "properties": {
+     "description": {
+      "default": "",
+      "maxLength": 500,
+      "title": "Description",
+      "type": "string"
+     },
+     "name": {
+      "maxLength": 60,
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "slug": {
+      "description": "3-40 characters: lowercase letters, digits, hyphens",
+      "title": "Slug",
+      "type": "string"
+     },
+     "unlisted": {
+      "default": false,
+      "title": "Unlisted",
+      "type": "boolean"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "format": "uri",
+        "maxLength": 2083,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "required": [
+     "slug",
+     "name"
+    ],
+    "title": "AgentCreate",
+    "type": "object"
+   },
+   "AgentMe": {
+    "properties": {
+     "agent": {
+      "title": "Agent",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "owner": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Owner"
+     },
+     "running": {
+      "title": "Running",
+      "type": "integer"
+     },
+     "season": {
+      "title": "Season",
+      "type": "string"
+     },
+     "used": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "description": "episodes started per track this season",
+      "title": "Used",
+      "type": "object"
+     }
+    },
+    "required": [
+     "agent",
+     "name",
+     "owner",
+     "running",
+     "used",
+     "season"
+    ],
+    "title": "AgentMe",
+    "type": "object"
+   },
+   "AgentPage": {
+    "properties": {
+     "agent": {
+      "$ref": "#/components/schemas/AgentSummary"
+     },
+     "histogram": {
+      "additionalProperties": {
+       "items": {
+        "type": "integer"
+       },
+       "type": "array"
+      },
+      "description": "episodes by blinds beaten, per track",
+      "title": "Histogram",
+      "type": "object"
+     },
+     "recent": {
+      "items": {
+       "$ref": "#/components/schemas/EpisodeSummary"
+      },
+      "title": "Recent",
+      "type": "array"
+     },
+     "season": {
+      "title": "Season",
+      "type": "string"
+     },
+     "tracks": {
+      "additionalProperties": {
+       "anyOf": [
+        {
+         "$ref": "#/components/schemas/Stats"
+        },
+        {
+         "type": "null"
+        }
+       ]
+      },
+      "title": "Tracks",
+      "type": "object"
+     }
+    },
+    "required": [
+     "agent",
+     "season",
+     "tracks",
+     "histogram",
+     "recent"
+    ],
+    "title": "AgentPage",
+    "type": "object"
+   },
+   "AgentSummary": {
+    "properties": {
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "owner": {
+      "$ref": "#/components/schemas/Owner"
+     },
+     "slug": {
+      "title": "Slug",
+      "type": "string"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "required": [
+     "slug",
+     "name",
+     "description",
+     "url",
+     "kind",
+     "owner",
+     "created_at"
+    ],
+    "title": "AgentSummary",
+    "type": "object"
+   },
+   "AgentUpdate": {
+    "properties": {
+     "description": {
+      "anyOf": [
+       {
+        "maxLength": 500,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "maxLength": 60,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "unlisted": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unlisted"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "format": "uri",
+        "maxLength": 2083,
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "title": "AgentUpdate",
+    "type": "object"
+   },
+   "BlindChoice": {
+    "properties": {
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "score": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Score"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status"
+     },
+     "tag": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tag"
+     }
+    },
+    "required": [
+     "name",
+     "status",
+     "score",
+     "tag"
+    ],
+    "title": "BlindChoice",
+    "type": "object"
+   },
+   "BlindModel": {
+    "properties": {
+     "boss": {
+      "title": "Boss",
+      "type": "boolean"
+     },
+     "chips": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Chips"
+     },
+     "disabled": {
+      "title": "Disabled",
+      "type": "boolean"
+     },
+     "dollars": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Dollars"
+     },
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "key",
+     "name",
+     "chips",
+     "boss",
+     "disabled",
+     "dollars"
+    ],
+    "title": "BlindModel",
+    "type": "object"
+   },
+   "BoardRow": {
+    "properties": {
+     "agent": {
+      "$ref": "#/components/schemas/AgentSummary"
+     },
+     "rank": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rank"
+     },
+     "stats": {
+      "$ref": "#/components/schemas/Stats"
+     }
+    },
+    "required": [
+     "rank",
+     "agent",
+     "stats"
+    ],
+    "title": "BoardRow",
+    "type": "object"
+   },
+   "CardModel": {
+    "properties": {
+     "cost": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cost"
+     },
+     "debuff": {
+      "title": "Debuff",
+      "type": "boolean"
+     },
+     "edition": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Edition"
+     },
+     "eternal": {
+      "title": "Eternal",
+      "type": "boolean"
+     },
+     "face_down": {
+      "title": "Face Down",
+      "type": "boolean"
+     },
+     "front": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Front"
+     },
+     "key": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Key"
+     },
+     "perishable": {
+      "title": "Perishable",
+      "type": "boolean"
+     },
+     "rank": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rank"
+     },
+     "rental": {
+      "title": "Rental",
+      "type": "boolean"
+     },
+     "seal": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seal"
+     },
+     "sell_cost": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sell Cost"
+     },
+     "suit": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Suit"
+     }
+    },
+    "required": [
+     "face_down",
+     "key",
+     "front",
+     "suit",
+     "rank",
+     "edition",
+     "seal",
+     "debuff",
+     "cost",
+     "sell_cost",
+     "eternal",
+     "perishable",
+     "rental"
+    ],
+    "title": "CardModel",
+    "type": "object"
+   },
+   "Catalog": {
+    "properties": {
+     "blinds": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/CatalogEntry"
+      },
+      "title": "Blinds",
+      "type": "object"
+     },
+     "centers": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/CatalogEntry"
+      },
+      "title": "Centers",
+      "type": "object"
+     },
+     "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+     },
+     "tags": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/CatalogEntry"
+      },
+      "title": "Tags",
+      "type": "object"
+     }
+    },
+    "required": [
+     "engine_version",
+     "centers",
+     "blinds",
+     "tags"
+    ],
+    "title": "Catalog",
+    "type": "object"
+   },
+   "CatalogEntry": {
+    "properties": {
+     "boss": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Boss"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "rarity": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rarity"
+     },
+     "set": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Set"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "CatalogEntry",
+    "type": "object"
+   },
+   "EpisodeCreate": {
+    "properties": {
+     "keys": {
+      "description": "One idempotency key per episode: resending a key returns its episode",
+      "items": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Keys",
+      "type": "array"
+     },
+     "reward": {
+      "$ref": "#/components/schemas/Reward",
+      "default": {
+       "kind": "sparse"
+      }
+     },
+     "track": {
+      "default": "red-1",
+      "title": "Track",
+      "type": "string"
+     }
+    },
+    "required": [
+     "keys"
+    ],
+    "title": "EpisodeCreate",
+    "type": "object"
+   },
+   "EpisodePage": {
+    "properties": {
+     "episodes": {
+      "items": {
+       "$ref": "#/components/schemas/EpisodeSummary"
+      },
+      "title": "Episodes",
+      "type": "array"
+     },
+     "next": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "cursor for the next page",
+      "title": "Next"
+     }
+    },
+    "required": [
+     "episodes"
+    ],
+    "title": "EpisodePage",
+    "type": "object"
+   },
+   "EpisodeResume": {
+    "properties": {
+     "final": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Final"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "key": {
+      "format": "uuid",
+      "title": "Key",
+      "type": "string"
+     },
+     "last": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/LastStep"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "n_actions": {
+      "description": "the first n of the Discrete(500) actions are legal",
+      "title": "N Actions",
+      "type": "integer"
+     },
+     "obs": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "base64 of 614 little-endian float32 values",
+      "title": "Obs"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "t": {
+      "title": "T",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "key",
+     "status",
+     "t",
+     "obs",
+     "n_actions"
+    ],
+    "title": "EpisodeResume",
+    "type": "object"
+   },
+   "EpisodeState": {
+    "properties": {
+     "final": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Final"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "key": {
+      "format": "uuid",
+      "title": "Key",
+      "type": "string"
+     },
+     "n_actions": {
+      "description": "the first n of the Discrete(500) actions are legal",
+      "title": "N Actions",
+      "type": "integer"
+     },
+     "obs": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "base64 of 614 little-endian float32 values",
+      "title": "Obs"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "t": {
+      "title": "T",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "key",
+     "status",
+     "t",
+     "obs",
+     "n_actions"
+    ],
+    "title": "EpisodeState",
+    "type": "object"
+   },
+   "EpisodeSummary": {
+    "properties": {
+     "agent": {
+      "title": "Agent",
+      "type": "string"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "ended_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ended At"
+     },
+     "final": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Final"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "season": {
+      "title": "Season",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "t": {
+      "title": "T",
+      "type": "integer"
+     },
+     "track": {
+      "title": "Track",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "agent",
+     "track",
+     "season",
+     "status",
+     "t",
+     "created_at",
+     "ended_at"
+    ],
+    "title": "EpisodeSummary",
+    "type": "object"
+   },
+   "EpisodesCreated": {
+    "properties": {
+     "episodes": {
+      "items": {
+       "$ref": "#/components/schemas/EpisodeState"
+      },
+      "title": "Episodes",
+      "type": "array"
+     }
+    },
+    "required": [
+     "episodes"
+    ],
+    "title": "EpisodesCreated",
+    "type": "object"
+   },
+   "Error": {
+    "properties": {
+     "detail": {
+      "title": "Detail"
+     },
+     "error": {
+      "title": "Error",
+      "type": "string"
+     },
+     "message": {
+      "title": "Message",
+      "type": "string"
+     }
+    },
+    "required": [
+     "error",
+     "message"
+    ],
+    "title": "Error",
+    "type": "object"
+   },
+   "Final": {
+    "description": "How an episode ended. The seeds are revealed once it has.",
+    "properties": {
+     "ante_reached": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ante Reached"
+     },
+     "end_reason": {
+      "title": "End Reason",
+      "type": "string"
+     },
+     "final_state_hash": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Final State Hash"
+     },
+     "length": {
+      "title": "Length",
+      "type": "integer"
+     },
+     "not_ported": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Not Ported"
+     },
+     "refused": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refused"
+     },
+     "rng_seed": {
+      "title": "Rng Seed",
+      "type": "string"
+     },
+     "rounds_beaten": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rounds Beaten"
+     },
+     "seed": {
+      "title": "Seed",
+      "type": "string"
+     },
+     "verified": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Verified"
+     },
+     "won": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Won"
+     }
+    },
+    "required": [
+     "end_reason",
+     "won",
+     "ante_reached",
+     "rounds_beaten",
+     "length",
+     "seed",
+     "rng_seed",
+     "final_state_hash",
+     "verified"
+    ],
+    "title": "Final",
+    "type": "object"
+   },
+   "Frame": {
+    "properties": {
+     "action": {
+      "anyOf": [
+       {
+        "items": {},
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "the tape action taken here; null at the end",
+      "title": "Action"
+     },
+     "ante": {
+      "title": "Ante",
+      "type": "integer"
+     },
+     "blind": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/BlindModel"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "blinds": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "$ref": "#/components/schemas/BlindChoice"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Blinds"
+     },
+     "chips": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Chips"
+     },
+     "consumables": {
+      "items": {
+       "$ref": "#/components/schemas/CardModel"
+      },
+      "title": "Consumables",
+      "type": "array"
+     },
+     "deck_size": {
+      "title": "Deck Size",
+      "type": "integer"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "discard_size": {
+      "title": "Discard Size",
+      "type": "integer"
+     },
+     "discards_left": {
+      "title": "Discards Left",
+      "type": "integer"
+     },
+     "dollars": {
+      "title": "Dollars",
+      "type": "integer"
+     },
+     "hand": {
+      "items": {
+       "$ref": "#/components/schemas/CardModel"
+      },
+      "title": "Hand",
+      "type": "array"
+     },
+     "hands_left": {
+      "title": "Hands Left",
+      "type": "integer"
+     },
+     "i": {
+      "title": "I",
+      "type": "integer"
+     },
+     "jokers": {
+      "items": {
+       "$ref": "#/components/schemas/CardModel"
+      },
+      "title": "Jokers",
+      "type": "array"
+     },
+     "last_score": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ScoreModel"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "pack": {
+      "items": {
+       "$ref": "#/components/schemas/CardModel"
+      },
+      "title": "Pack",
+      "type": "array"
+     },
+     "phase": {
+      "title": "Phase",
+      "type": "string"
+     },
+     "round": {
+      "title": "Round",
+      "type": "integer"
+     },
+     "shop": {
+      "$ref": "#/components/schemas/ShopModel"
+     },
+     "tags": {
+      "items": {
+       "$ref": "#/components/schemas/TagModel"
+      },
+      "title": "Tags",
+      "type": "array"
+     }
+    },
+    "required": [
+     "i",
+     "phase",
+     "ante",
+     "round",
+     "dollars",
+     "chips",
+     "hands_left",
+     "discards_left",
+     "blind",
+     "blinds",
+     "hand",
+     "jokers",
+     "consumables",
+     "shop",
+     "pack",
+     "tags",
+     "last_score",
+     "deck_size",
+     "discard_size",
+     "action",
+     "description"
+    ],
+    "title": "Frame",
+    "type": "object"
+   },
+   "FramesDoc": {
+    "properties": {
+     "frames": {
+      "items": {
+       "$ref": "#/components/schemas/Frame"
+      },
+      "title": "Frames",
+      "type": "array"
+     },
+     "start": {
+      "title": "Start",
+      "type": "integer"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "total",
+     "start",
+     "frames"
+    ],
+    "title": "FramesDoc",
+    "type": "object"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "LastStep": {
+    "properties": {
+     "action": {
+      "title": "Action",
+      "type": "integer"
+     },
+     "reward": {
+      "title": "Reward",
+      "type": "number"
+     },
+     "t": {
+      "title": "T",
+      "type": "integer"
+     },
+     "terminated": {
+      "title": "Terminated",
+      "type": "boolean"
+     },
+     "truncated": {
+      "title": "Truncated",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "t",
+     "action",
+     "reward",
+     "terminated",
+     "truncated"
+    ],
+    "title": "LastStep",
+    "type": "object"
+   },
+   "Leaderboard": {
+    "properties": {
+     "house": {
+      "items": {
+       "$ref": "#/components/schemas/BoardRow"
+      },
+      "title": "House",
+      "type": "array"
+     },
+     "k": {
+      "title": "K",
+      "type": "integer"
+     },
+     "provisional": {
+      "items": {
+       "$ref": "#/components/schemas/BoardRow"
+      },
+      "title": "Provisional",
+      "type": "array"
+     },
+     "ranked": {
+      "items": {
+       "$ref": "#/components/schemas/BoardRow"
+      },
+      "title": "Ranked",
+      "type": "array"
+     },
+     "season": {
+      "title": "Season",
+      "type": "string"
+     },
+     "track": {
+      "title": "Track",
+      "type": "string"
+     }
+    },
+    "required": [
+     "track",
+     "season",
+     "k",
+     "ranked",
+     "provisional",
+     "house"
+    ],
+    "title": "Leaderboard",
+    "type": "object"
+   },
+   "MeDoc": {
+    "properties": {
+     "agents": {
+      "items": {
+       "$ref": "#/components/schemas/MyAgent"
+      },
+      "title": "Agents",
+      "type": "array"
+     },
+     "limits": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Limits",
+      "type": "object"
+     },
+     "user": {
+      "$ref": "#/components/schemas/UserInfo"
+     }
+    },
+    "required": [
+     "user",
+     "agents",
+     "limits"
+    ],
+    "title": "MeDoc",
+    "type": "object"
+   },
+   "Moderate": {
+    "properties": {
+     "hidden": {
+      "title": "Hidden",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "hidden"
+    ],
+    "title": "Moderate",
+    "type": "object"
+   },
+   "MyAgent": {
+    "properties": {
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "description": {
+      "title": "Description",
+      "type": "string"
+     },
+     "hidden": {
+      "title": "Hidden",
+      "type": "boolean"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "owner": {
+      "$ref": "#/components/schemas/Owner"
+     },
+     "slug": {
+      "title": "Slug",
+      "type": "string"
+     },
+     "tokens": {
+      "items": {
+       "$ref": "#/components/schemas/TokenInfo"
+      },
+      "title": "Tokens",
+      "type": "array"
+     },
+     "unlisted": {
+      "title": "Unlisted",
+      "type": "boolean"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     },
+     "used": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Used",
+      "type": "object"
+     }
+    },
+    "required": [
+     "slug",
+     "name",
+     "description",
+     "url",
+     "kind",
+     "owner",
+     "created_at",
+     "unlisted",
+     "hidden",
+     "tokens",
+     "used"
+    ],
+    "title": "MyAgent",
+    "type": "object"
+   },
+   "NewToken": {
+    "properties": {
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "prefix": {
+      "title": "Prefix",
+      "type": "string"
+     },
+     "token": {
+      "description": "shown once: store it now",
+      "title": "Token",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "token",
+     "prefix",
+     "label"
+    ],
+    "title": "NewToken",
+    "type": "object"
+   },
+   "Owner": {
+    "properties": {
+     "avatar_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avatar Url"
+     },
+     "login": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Login"
+     }
+    },
+    "required": [
+     "login",
+     "avatar_url"
+    ],
+    "title": "Owner",
+    "type": "object"
+   },
+   "Provider": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name"
+    ],
+    "title": "Provider",
+    "type": "object"
+   },
+   "Reward": {
+    "properties": {
+     "kind": {
+      "default": "sparse",
+      "enum": [
+       "sparse",
+       "blind_progress",
+       "shaped"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "weights": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "type": "number"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "ShapedReward weights to override (shaped only)",
+      "title": "Weights"
+     }
+    },
+    "title": "Reward",
+    "type": "object"
+   },
+   "RunningEpisode": {
+    "properties": {
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "key": {
+      "format": "uuid",
+      "title": "Key",
+      "type": "string"
+     },
+     "t": {
+      "title": "T",
+      "type": "integer"
+     },
+     "track": {
+      "title": "Track",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "key",
+     "t",
+     "track"
+    ],
+    "title": "RunningEpisode",
+    "type": "object"
+   },
+   "ScoreModel": {
+    "properties": {
+     "chips": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Chips"
+     },
+     "debuffed": {
+      "title": "Debuffed",
+      "type": "boolean"
+     },
+     "hand_type": {
+      "title": "Hand Type",
+      "type": "string"
+     },
+     "mult": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Mult"
+     },
+     "total": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string"
+       }
+      ],
+      "title": "Total"
+     }
+    },
+    "required": [
+     "hand_type",
+     "chips",
+     "mult",
+     "total",
+     "debuffed"
+    ],
+    "title": "ScoreModel",
+    "type": "object"
+   },
+   "Session": {
+    "properties": {
+     "user": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/UserInfo"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "user"
+    ],
+    "title": "Session",
+    "type": "object"
+   },
+   "ShopModel": {
+    "properties": {
+     "boosters": {
+      "items": {
+       "$ref": "#/components/schemas/CardModel"
+      },
+      "title": "Boosters",
+      "type": "array"
+     },
+     "cards": {
+      "items": {
+       "$ref": "#/components/schemas/CardModel"
+      },
+      "title": "Cards",
+      "type": "array"
+     },
+     "vouchers": {
+      "items": {
+       "$ref": "#/components/schemas/CardModel"
+      },
+      "title": "Vouchers",
+      "type": "array"
+     }
+    },
+    "required": [
+     "cards",
+     "vouchers",
+     "boosters"
+    ],
+    "title": "ShopModel",
+    "type": "object"
+   },
+   "Stats": {
+    "properties": {
+     "ante_mean": {
+      "title": "Ante Mean",
+      "type": "number"
+     },
+     "blinds_ci95": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "number"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "95% interval [low, high]",
+      "title": "Blinds Ci95"
+     },
+     "blinds_mean": {
+      "title": "Blinds Mean",
+      "type": "number"
+     },
+     "blinds_sem": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Blinds Sem"
+     },
+     "forfeited": {
+      "title": "Forfeited",
+      "type": "number"
+     },
+     "length_mean": {
+      "title": "Length Mean",
+      "type": "number"
+     },
+     "max_ante": {
+      "title": "Max Ante",
+      "type": "integer"
+     },
+     "n": {
+      "title": "N",
+      "type": "integer"
+     },
+     "truncated": {
+      "title": "Truncated",
+      "type": "number"
+     },
+     "unverified": {
+      "title": "Unverified",
+      "type": "integer"
+     },
+     "win_ci95": {
+      "description": "Wilson 95% interval [low, high]",
+      "items": {
+       "type": "number"
+      },
+      "title": "Win Ci95",
+      "type": "array"
+     },
+     "win_rate": {
+      "title": "Win Rate",
+      "type": "number"
+     }
+    },
+    "required": [
+     "n",
+     "blinds_mean",
+     "blinds_sem",
+     "blinds_ci95",
+     "ante_mean",
+     "max_ante",
+     "win_rate",
+     "win_ci95",
+     "length_mean",
+     "truncated",
+     "forfeited",
+     "unverified"
+    ],
+    "title": "Stats",
+    "type": "object"
+   },
+   "StepItem": {
+    "properties": {
+     "action": {
+      "exclusiveMaximum": 65536.0,
+      "minimum": 0.0,
+      "title": "Action",
+      "type": "integer"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "t": {
+      "description": "the episode's step count before this action",
+      "minimum": 0.0,
+      "title": "T",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "t",
+     "action"
+    ],
+    "title": "StepItem",
+    "type": "object"
+   },
+   "StepOutcome": {
+    "properties": {
+     "error": {
+      "anyOf": [
+       {
+        "enum": [
+         "conflict",
+         "illegal_action",
+         "ended",
+         "not_found"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "final": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Final"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "n_actions": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "N Actions"
+     },
+     "obs": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obs"
+     },
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "reward": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reward"
+     },
+     "t": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "T"
+     },
+     "terminated": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Terminated"
+     },
+     "truncated": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Truncated"
+     }
+    },
+    "required": [
+     "id",
+     "ok"
+    ],
+    "title": "StepOutcome",
+    "type": "object"
+   },
+   "StepRequest": {
+    "properties": {
+     "steps": {
+      "items": {
+       "$ref": "#/components/schemas/StepItem"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "title": "Steps",
+      "type": "array"
+     }
+    },
+    "required": [
+     "steps"
+    ],
+    "title": "StepRequest",
+    "type": "object"
+   },
+   "StepResponse": {
+    "properties": {
+     "results": {
+      "items": {
+       "$ref": "#/components/schemas/StepOutcome"
+      },
+      "title": "Results",
+      "type": "array"
+     }
+    },
+    "required": [
+     "results"
+    ],
+    "title": "StepResponse",
+    "type": "object"
+   },
+   "TagModel": {
+    "properties": {
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "key",
+     "name"
+    ],
+    "title": "TagModel",
+    "type": "object"
+   },
+   "TapeDoc": {
+    "properties": {
+     "action_version": {
+      "title": "Action Version",
+      "type": "integer"
+     },
+     "attempted": {
+      "title": "Attempted"
+     },
+     "back": {
+      "title": "Back",
+      "type": "string"
+     },
+     "end_on_win": {
+      "title": "End On Win",
+      "type": "boolean"
+     },
+     "end_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End Reason"
+     },
+     "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+     },
+     "final_state_hash": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Final State Hash"
+     },
+     "format": {
+      "title": "Format",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "indices": {
+      "items": {
+       "type": "integer"
+      },
+      "title": "Indices",
+      "type": "array"
+     },
+     "max_free_moves": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Free Moves"
+     },
+     "max_steps": {
+      "title": "Max Steps",
+      "type": "integer"
+     },
+     "reward": {
+      "title": "Reward",
+      "type": "string"
+     },
+     "rng_seed": {
+      "title": "Rng Seed",
+      "type": "string"
+     },
+     "seed": {
+      "title": "Seed",
+      "type": "string"
+     },
+     "stake": {
+      "title": "Stake",
+      "type": "integer"
+     },
+     "tape": {
+      "items": {
+       "items": {},
+       "type": "array"
+      },
+      "title": "Tape",
+      "type": "array"
+     },
+     "track": {
+      "title": "Track",
+      "type": "string"
+     },
+     "verified": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Verified"
+     }
+    },
+    "required": [
+     "format",
+     "id",
+     "engine_version",
+     "action_version",
+     "track",
+     "back",
+     "stake",
+     "seed",
+     "rng_seed",
+     "max_steps",
+     "end_on_win",
+     "max_free_moves",
+     "reward",
+     "indices",
+     "tape",
+     "final_state_hash",
+     "verified",
+     "end_reason"
+    ],
+    "title": "TapeDoc",
+    "type": "object"
+   },
+   "TokenCreate": {
+    "properties": {
+     "label": {
+      "default": "",
+      "maxLength": 60,
+      "title": "Label",
+      "type": "string"
+     }
+    },
+    "title": "TokenCreate",
+    "type": "object"
+   },
+   "TokenInfo": {
+    "properties": {
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "id": {
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "label": {
+      "title": "Label",
+      "type": "string"
+     },
+     "last_used_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Used At"
+     },
+     "prefix": {
+      "title": "Prefix",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "prefix",
+     "label",
+     "created_at",
+     "last_used_at"
+    ],
+    "title": "TokenInfo",
+    "type": "object"
+   },
+   "TrackInfo": {
+    "properties": {
+     "back": {
+      "title": "Back",
+      "type": "string"
+     },
+     "end_on_win": {
+      "title": "End On Win",
+      "type": "boolean"
+     },
+     "episodes_per_agent": {
+      "title": "Episodes Per Agent",
+      "type": "integer"
+     },
+     "key": {
+      "title": "Key",
+      "type": "string"
+     },
+     "max_free_moves": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Free Moves"
+     },
+     "max_steps": {
+      "title": "Max Steps",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "stake": {
+      "title": "Stake",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "key",
+     "name",
+     "back",
+     "stake",
+     "max_steps",
+     "end_on_win",
+     "max_free_moves",
+     "episodes_per_agent"
+    ],
+    "title": "TrackInfo",
+    "type": "object"
+   },
+   "UserInfo": {
+    "properties": {
+     "avatar_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Avatar Url"
+     },
+     "is_admin": {
+      "title": "Is Admin",
+      "type": "boolean"
+     },
+     "login": {
+      "title": "Login",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     }
+    },
+    "required": [
+     "login",
+     "name",
+     "avatar_url",
+     "is_admin"
+    ],
+    "title": "UserInfo",
+    "type": "object"
+   },
+   "ValidationError": {
+    "properties": {
+     "ctx": {
+      "title": "Context",
+      "type": "object"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "description": "An agent token: jdk_...",
+    "scheme": "bearer",
+    "type": "http"
+   }
+  }
+ },
+ "info": {
+  "description": "Hosted, verifiable evaluation for Balatro agents on the jackdaw engine.",
+  "title": "Jackdaw Arena",
+  "version": "0.1.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/api/admin/agents/{slug}": {
+   "post": {
+    "operationId": "moderate_api_admin_agents__slug__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Moderate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Moderate Api Admin Agents  Slug  Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Moderate",
+    "tags": [
+     "admin"
+    ]
+   }
+  },
+  "/api/agents/{slug}": {
+   "get": {
+    "operationId": "agent_page_api_agents__slug__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AgentPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Agent Page",
+    "tags": [
+     "public"
+    ]
+   }
+  },
+  "/api/agents/{slug}/episodes": {
+   "get": {
+    "operationId": "agent_episodes_api_agents__slug__episodes_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "track",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Track"
+      }
+     },
+     {
+      "in": "query",
+      "name": "before",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Before"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EpisodePage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Agent Episodes",
+    "tags": [
+     "public"
+    ]
+   }
+  },
+  "/api/catalog": {
+   "get": {
+    "operationId": "get_catalog_api_catalog_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Catalog"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Catalog",
+    "tags": [
+     "public"
+    ]
+   }
+  },
+  "/api/episodes/{episode_id}": {
+   "get": {
+    "operationId": "episode_api_episodes__episode_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EpisodeSummary"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Episode",
+    "tags": [
+     "public"
+    ]
+   }
+  },
+  "/api/episodes/{episode_id}/frames": {
+   "get": {
+    "operationId": "episode_frames_api_episodes__episode_id__frames_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "from",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "From",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 200,
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FramesDoc"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Episode Frames",
+    "tags": [
+     "public"
+    ]
+   }
+  },
+  "/api/episodes/{episode_id}/tape": {
+   "get": {
+    "operationId": "episode_tape_api_episodes__episode_id__tape_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TapeDoc"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Episode Tape",
+    "tags": [
+     "public"
+    ]
+   }
+  },
+  "/api/leaderboard": {
+   "get": {
+    "operationId": "get_leaderboard_api_leaderboard_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "track",
+      "required": false,
+      "schema": {
+       "default": "red-1",
+       "title": "Track",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "season",
+      "required": false,
+      "schema": {
+       "default": "0.2.0",
+       "title": "Season",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Leaderboard"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Leaderboard",
+    "tags": [
+     "public"
+    ]
+   }
+  },
+  "/api/me": {
+   "get": {
+    "operationId": "me_api_me_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MeDoc"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Me",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/agents": {
+   "post": {
+    "operationId": "create_agent_api_me_agents_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AgentCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MyAgent"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Agent",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/agents/{slug}": {
+   "get": {
+    "operationId": "my_agent_api_me_agents__slug__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AgentPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "My Agent",
+    "tags": [
+     "account"
+    ]
+   },
+   "patch": {
+    "operationId": "update_agent_api_me_agents__slug__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AgentUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MyAgent"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Agent",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/agents/{slug}/episodes": {
+   "get": {
+    "operationId": "my_agent_episodes_api_me_agents__slug__episodes_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "track",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Track"
+      }
+     },
+     {
+      "in": "query",
+      "name": "before",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Before"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "maximum": 100,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EpisodePage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "My Agent Episodes",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/agents/{slug}/tokens": {
+   "post": {
+    "operationId": "create_token_api_me_agents__slug__tokens_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slug",
+      "required": true,
+      "schema": {
+       "title": "Slug",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TokenCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NewToken"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Token",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/episodes/{episode_id}": {
+   "get": {
+    "operationId": "my_episode_api_me_episodes__episode_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EpisodeSummary"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "My Episode",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/episodes/{episode_id}/frames": {
+   "get": {
+    "operationId": "my_frames_api_me_episodes__episode_id__frames_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "from",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "minimum": 0,
+       "title": "From",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 200,
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/FramesDoc"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "My Frames",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/episodes/{episode_id}/tape": {
+   "get": {
+    "operationId": "my_tape_api_me_episodes__episode_id__tape_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TapeDoc"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "My Tape",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/me/tokens/{token_id}": {
+   "delete": {
+    "operationId": "revoke_token_api_me_tokens__token_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "token_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Token Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Revoke Token",
+    "tags": [
+     "account"
+    ]
+   }
+  },
+  "/api/tracks": {
+   "get": {
+    "operationId": "tracks_api_tracks_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/TrackInfo"
+         },
+         "title": "Response Tracks Api Tracks Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Tracks",
+    "tags": [
+     "public"
+    ]
+   }
+  },
+  "/api/v1/episodes": {
+   "get": {
+    "operationId": "running_api_v1_episodes_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "status",
+      "required": false,
+      "schema": {
+       "const": "running",
+       "default": "running",
+       "title": "Status",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/RunningEpisode"
+         },
+         "title": "Response Running Api V1 Episodes Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Running",
+    "tags": [
+     "agent"
+    ]
+   },
+   "post": {
+    "operationId": "create_episodes_api_v1_episodes_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EpisodeCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EpisodesCreated"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "403": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Forbidden"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     },
+     "429": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      },
+      "description": "Too Many Requests"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Create Episodes",
+    "tags": [
+     "agent"
+    ]
+   }
+  },
+  "/api/v1/episodes/{episode_id}": {
+   "get": {
+    "operationId": "get_episode_api_v1_episodes__episode_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EpisodeResume"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Get Episode",
+    "tags": [
+     "agent"
+    ]
+   }
+  },
+  "/api/v1/episodes/{episode_id}/forfeit": {
+   "post": {
+    "operationId": "forfeit_api_v1_episodes__episode_id__forfeit_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "episode_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Episode Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Final"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Forfeit",
+    "tags": [
+     "agent"
+    ]
+   }
+  },
+  "/api/v1/me": {
+   "get": {
+    "operationId": "me_api_v1_me_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AgentMe"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Me",
+    "tags": [
+     "agent"
+    ]
+   }
+  },
+  "/api/v1/spec": {
+   "get": {
+    "operationId": "spec_api_v1_spec_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Spec Api V1 Spec Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "The engine, observation layout, actions, rewards and tracks",
+    "tags": [
+     "agent"
+    ]
+   }
+  },
+  "/api/v1/step": {
+   "post": {
+    "operationId": "step_api_v1_step_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/StepRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StepResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "summary": "Step",
+    "tags": [
+     "agent"
+    ]
+   }
+  },
+  "/api/version": {
+   "get": {
+    "operationId": "version_api_version_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "type": "string"
+         },
+         "title": "Response Version Api Version Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Version",
+    "tags": [
+     "health",
+     "public"
+    ]
+   }
+  },
+  "/auth/logout": {
+   "post": {
+    "operationId": "logout_auth_logout_post",
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Logout",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
+  "/auth/providers": {
+   "get": {
+    "operationId": "providers_auth_providers_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/Provider"
+         },
+         "title": "Response Providers Auth Providers Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Providers",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
+  "/auth/session": {
+   "get": {
+    "description": "Who is signed in, if anyone. Always 200, so pages can ask without logging an error.",
+    "operationId": "session_auth_session_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Session"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Session",
+    "tags": [
+     "auth"
+    ]
+   }
+  }
+ }
+}

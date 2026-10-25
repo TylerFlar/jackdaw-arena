@@ -10,7 +10,8 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 
-from arena.auth.deps import csrf_protect
+from arena import schemas
+from arena.auth.deps import OptionalUserDep, csrf_protect
 from arena.auth.oauth import HANDSHAKE_COOKIE, HANDSHAKE_MAX_AGE, SignIn, SignInError
 from arena.auth.tokens import digest
 from arena.db import repo
@@ -22,9 +23,16 @@ def _signin(request: Request) -> SignIn:
     return request.app.state.signin
 
 
-@router.get("/providers")
+@router.get("/providers", response_model=list[schemas.Provider])
 def providers(request: Request) -> list[dict[str, str]]:
     return _signin(request).listing()
+
+
+@router.get("/session", response_model=schemas.Session)
+def session(response: Response, user: OptionalUserDep) -> dict[str, Any]:
+    """Who is signed in, if anyone. Always 200, so pages can ask without logging an error."""
+    response.headers["Cache-Control"] = "no-store"
+    return {"user": user_json(user) if user else None}
 
 
 @router.get("/login/{provider}", include_in_schema=False)

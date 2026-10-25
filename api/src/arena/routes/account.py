@@ -13,12 +13,19 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.exc import IntegrityError
 
+from arena import schemas
 from arena.auth.deps import UserDep, csrf_protect
 from arena.auth.tokens import digest, display_prefix, new_token
 from arena.db import repo
 from arena.engine.spec import ENGINE_VERSION
 from arena.routes.auth import user_json
-from arena.routes.public import agent_document, episode_page, frames_document, tape_document
+from arena.routes.public import (
+    agent_document,
+    episode_page,
+    episode_summary,
+    frames_document,
+    tape_document,
+)
 from arena.services.leaderboard import agent_summary
 
 router = APIRouter(prefix="/api/me", tags=["account"])
@@ -64,7 +71,7 @@ def _agent_json(conn: Any, a: repo.Agent) -> dict[str, Any]:
     }
 
 
-@router.get("")
+@router.get("", response_model=schemas.MeDoc)
 def me(request: Request, user: UserDep) -> dict[str, Any]:
     s = request.app.state.settings
     with request.app.state.engine.connect() as conn:
@@ -76,7 +83,12 @@ def me(request: Request, user: UserDep) -> dict[str, Any]:
     }
 
 
-@router.post("/agents", status_code=201, dependencies=[Depends(csrf_protect)])
+@router.post(
+    "/agents",
+    status_code=201,
+    response_model=schemas.MyAgent,
+    dependencies=[Depends(csrf_protect)],
+)
 def create_agent(body: AgentCreate, request: Request, user: UserDep) -> dict[str, Any]:
     s = request.app.state.settings
     if not SLUG.match(body.slug) or body.slug.startswith("house-"):
@@ -97,7 +109,9 @@ def create_agent(body: AgentCreate, request: Request, user: UserDep) -> dict[str
         raise HTTPException(409, f"the slug {body.slug!r} is taken") from None
 
 
-@router.patch("/agents/{slug}", dependencies=[Depends(csrf_protect)])
+@router.patch(
+    "/agents/{slug}", response_model=schemas.MyAgent, dependencies=[Depends(csrf_protect)]
+)
 def update_agent(slug: str, body: AgentUpdate, request: Request, user: UserDep) -> dict[str, Any]:
     with request.app.state.engine.begin() as conn:
         agent = _owned(conn, user, slug)
@@ -110,7 +124,12 @@ def update_agent(slug: str, body: AgentUpdate, request: Request, user: UserDep) 
         return _agent_json(conn, updated)
 
 
-@router.post("/agents/{slug}/tokens", status_code=201, dependencies=[Depends(csrf_protect)])
+@router.post(
+    "/agents/{slug}/tokens",
+    status_code=201,
+    response_model=schemas.NewToken,
+    dependencies=[Depends(csrf_protect)],
+)
 def create_token(slug: str, body: TokenCreate, request: Request, user: UserDep) -> dict[str, Any]:
     s = request.app.state.settings
     token = new_token()
@@ -138,13 +157,13 @@ def revoke_token(token_id: uuid.UUID, request: Request, user: UserDep) -> Respon
 # --- the owner's views: also unlisted agents ---------------------------------------------------
 
 
-@router.get("/agents/{slug}")
+@router.get("/agents/{slug}", response_model=schemas.AgentPage)
 def my_agent(slug: str, request: Request, user: UserDep) -> dict[str, Any]:
     with request.app.state.engine.connect() as conn:
         return agent_document(conn, _owned(conn, user, slug))
 
 
-@router.get("/agents/{slug}/episodes")
+@router.get("/agents/{slug}/episodes", response_model=schemas.EpisodePage)
 def my_agent_episodes(
     slug: str,
     request: Request,
@@ -168,7 +187,17 @@ def _my_ended(request: Request, user: repo.User, episode_id: uuid.UUID) -> repo.
     return row
 
 
-@router.get("/episodes/{episode_id}/frames")
+@router.get("/episodes/{episode_id}", response_model=schemas.EpisodeSummary)
+def my_episode(episode_id: uuid.UUID, request: Request, user: UserDep) -> dict[str, Any]:
+    with request.app.state.engine.connect() as conn:
+        row = repo.get_episode(conn, episode_id)
+        agent = repo.agent_by_id(conn, row.agent_id) if row else None
+    if row is None or agent is None or agent.user_id != user.id:
+        raise HTTPException(404, "no such episode of yours")
+    return episode_summary(row, agent.slug)
+
+
+@router.get("/episodes/{episode_id}/frames", response_model=schemas.FramesDoc)
 async def my_frames(
     episode_id: uuid.UUID,
     request: Request,
@@ -180,7 +209,7 @@ async def my_frames(
     return await frames_document(row, start, limit)
 
 
-@router.get("/episodes/{episode_id}/tape")
+@router.get("/episodes/{episode_id}/tape", response_model=schemas.TapeDoc)
 def my_tape(episode_id: uuid.UUID, request: Request, user: UserDep) -> dict[str, Any]:
     return tape_document(_my_ended(request, user, episode_id))
 

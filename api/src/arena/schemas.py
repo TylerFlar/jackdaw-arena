@@ -146,11 +146,11 @@ class Stats(BaseModel):
     n: int
     blinds_mean: float
     blinds_sem: float | None
-    blinds_ci95: tuple[float, float] | None
+    blinds_ci95: list[float] | None = Field(description="95% interval [low, high]")
     ante_mean: float
     max_ante: int
     win_rate: float
-    win_ci95: tuple[float, float]
+    win_ci95: list[float] = Field(description="Wilson 95% interval [low, high]")
     length_mean: float
     truncated: float
     forfeited: float
@@ -206,3 +206,174 @@ class AgentPage(BaseModel):
 class EpisodePage(BaseModel):
     episodes: list[EpisodeSummary]
     next: str | None = Field(None, description="cursor for the next page")
+
+
+# --- replays -----------------------------------------------------------------------------------
+
+Num = float | str
+"""A game number. Balatro scores can overflow to infinity, which JSON can't carry: those come as
+strings (``"inf"``)."""
+
+
+class CardModel(BaseModel):
+    face_down: bool
+    key: str | None
+    front: str | None
+    suit: str | None
+    rank: str | None
+    edition: str | None
+    seal: str | None
+    debuff: bool
+    cost: Num | None
+    sell_cost: Num | None
+    eternal: bool
+    perishable: bool
+    rental: bool
+
+
+class BlindModel(BaseModel):
+    key: str
+    name: str
+    chips: Num
+    boss: bool
+    disabled: bool
+    dollars: Num
+
+
+class BlindChoice(BaseModel):
+    name: str | None
+    status: str | None
+    score: Num | None
+    tag: str | None
+
+
+class ShopModel(BaseModel):
+    cards: list[CardModel]
+    vouchers: list[CardModel]
+    boosters: list[CardModel]
+
+
+class TagModel(BaseModel):
+    key: str
+    name: str
+
+
+class ScoreModel(BaseModel):
+    hand_type: str
+    chips: Num
+    mult: Num
+    total: Num
+    debuffed: bool
+
+
+class Frame(BaseModel):
+    i: int
+    phase: str
+    ante: int
+    round: int
+    dollars: int
+    chips: Num
+    hands_left: int
+    discards_left: int
+    blind: BlindModel | None
+    blinds: dict[str, BlindChoice] | None
+    hand: list[CardModel]
+    jokers: list[CardModel]
+    consumables: list[CardModel]
+    shop: ShopModel
+    pack: list[CardModel]
+    tags: list[TagModel]
+    last_score: ScoreModel | None
+    deck_size: int
+    discard_size: int
+    action: list[Any] | None = Field(description="the tape action taken here; null at the end")
+    description: str | None
+
+
+class FramesDoc(BaseModel):
+    total: int
+    start: int
+    frames: list[Frame]
+
+
+class TapeDoc(BaseModel):
+    format: str
+    id: str
+    engine_version: str
+    action_version: int
+    track: str
+    back: str
+    stake: int
+    seed: str
+    rng_seed: str
+    max_steps: int
+    end_on_win: bool
+    max_free_moves: int | None
+    reward: str
+    indices: list[int]
+    tape: list[list[Any]]
+    attempted: Any = None
+    final_state_hash: str | None
+    verified: bool | None
+    end_reason: str | None
+
+
+class CatalogEntry(BaseModel):
+    name: str
+    set: str | None = None
+    rarity: int | None = None
+    boss: bool | None = None
+
+
+class Catalog(BaseModel):
+    engine_version: str
+    centers: dict[str, CatalogEntry]
+    blinds: dict[str, CatalogEntry]
+    tags: dict[str, CatalogEntry]
+
+
+# --- account -----------------------------------------------------------------------------------
+
+
+class UserInfo(BaseModel):
+    login: str
+    name: str | None
+    avatar_url: str | None
+    is_admin: bool
+
+
+class TokenInfo(BaseModel):
+    id: uuid.UUID
+    prefix: str
+    label: str
+    created_at: datetime
+    last_used_at: datetime | None
+
+
+class MyAgent(AgentSummary):
+    unlisted: bool
+    hidden: bool
+    tokens: list[TokenInfo]
+    used: dict[str, int]
+
+
+class MeDoc(BaseModel):
+    user: UserInfo
+    agents: list[MyAgent]
+    limits: dict[str, int]
+
+
+class NewToken(BaseModel):
+    id: uuid.UUID
+    token: str = Field(description="shown once: store it now")
+    prefix: str
+    label: str
+
+
+class Provider(BaseModel):
+    id: str
+    name: str
+
+
+class Session(BaseModel):
+    user: UserInfo | None

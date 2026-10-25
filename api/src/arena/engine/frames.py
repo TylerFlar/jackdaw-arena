@@ -8,6 +8,7 @@ engine's.
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Sequence
 from typing import Any
 
@@ -19,6 +20,13 @@ from arena.engine.catalog import card_label, name_of
 from arena.engine.live import RunSpec
 
 
+def num(x: Any) -> Any:
+    """A JSON-safe game number: Balatro scores can overflow to inf (or nan)."""
+    if isinstance(x, float) and not math.isfinite(x):
+        return "nan" if math.isnan(x) else ("inf" if x > 0 else "-inf")
+    return x
+
+
 def _card(c: CardView) -> dict[str, Any]:
     if c.face_down:
         return {
@@ -28,8 +36,8 @@ def _card(c: CardView) -> dict[str, Any]:
         }  # fmt: skip
     return {
         "face_down": False, "key": c.key, "front": c.front, "suit": c.suit, "rank": c.rank,
-        "edition": c.edition, "seal": c.seal, "debuff": c.debuff, "cost": c.cost,
-        "sell_cost": c.sell_cost, "eternal": c.eternal, "perishable": c.perishable,
+        "edition": c.edition, "seal": c.seal, "debuff": c.debuff, "cost": num(c.cost),
+        "sell_cost": num(c.sell_cost), "eternal": c.eternal, "perishable": c.perishable,
         "rental": c.rental,
     }  # fmt: skip
 
@@ -44,7 +52,7 @@ def _blinds(raw: Any) -> dict[str, Any] | None:
         b = raw.get(slot)
         if isinstance(b, dict):
             out[slot] = {
-                "name": b.get("name"), "status": b.get("status"), "score": b.get("score"),
+                "name": b.get("name"), "status": b.get("status"), "score": num(b.get("score")),
                 "tag": b.get("tag_name") or None,
             }  # fmt: skip
     return out or None
@@ -59,7 +67,7 @@ def frame(game: Game) -> dict[str, Any]:
         "ante": game.ante,
         "round": game.round,
         "dollars": game.dollars,
-        "chips": game.chips,
+        "chips": num(game.chips),
         "hands_left": game.hands_left,
         "discards_left": game.discards_left,
         "blind": None
@@ -67,10 +75,10 @@ def frame(game: Game) -> dict[str, Any]:
         else {
             "key": blind.key,
             "name": name_of(blind.key),
-            "chips": blind.chips,
+            "chips": num(blind.chips),
             "boss": blind.boss,
             "disabled": blind.disabled,
-            "dollars": blind.dollars,
+            "dollars": num(blind.dollars),
         },  # fmt: skip
         "blinds": _blinds(view.get("blinds")),
         "hand": [_card(c) for c in game.hand],
@@ -87,9 +95,9 @@ def frame(game: Game) -> dict[str, Any]:
         if last is None
         else {
             "hand_type": last.hand_type,
-            "chips": last.chips,
-            "mult": last.mult,
-            "total": last.total,
+            "chips": num(last.chips),
+            "mult": num(last.mult),
+            "total": num(last.total),
             "debuffed": last.debuffed,
         },  # fmt: skip
         "deck_size": len(game.deck),

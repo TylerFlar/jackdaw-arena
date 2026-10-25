@@ -78,6 +78,7 @@ def test_unlisted_agents_are_private_to_their_owner(client, agents, sign_in, end
     sign_in(client, owner)
     assert client.get("/api/me/agents/secret-bot").json()["agent"]["slug"] == "secret-bot"
     assert client.get(f"/api/me/episodes/{eid}/tape").status_code == 200
+    assert client.get(f"/api/me/episodes/{eid}").json()["final"]["rounds_beaten"] == 3
     r = client.patch("/api/me/agents/secret-bot", json={"unlisted": False}, headers=CSRF)
     assert r.status_code == 200 and r.json()["unlisted"] is False
     assert client.get("/api/agents/secret-bot").status_code == 200

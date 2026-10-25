@@ -64,6 +64,7 @@ def test_github_sign_in_creates_a_session(github_app):
         assert sent["code_verifier"][0] and sent["client_secret"] == ["gh-secret"]
         me = client.get("/api/me").json()
         assert me["user"]["login"] == "octo" and me["user"]["is_admin"] is False
+        assert client.get("/auth/session").json()["user"]["login"] == "octo"
         set_cookie = r.headers.get_list("set-cookie")
         session = next(c for c in set_cookie if c.startswith("arena_session="))
         assert "HttpOnly" in session and "SameSite=lax" in session
@@ -124,6 +125,11 @@ def test_logout_needs_the_csrf_header_and_ends_the_session(github_app):
         assert cross.status_code == 403
         assert client.post("/auth/logout", headers=CSRF).status_code == 204
         assert client.get("/api/me").status_code == 401
+
+
+def test_session_is_null_when_signed_out(client):
+    r = client.get("/auth/session")
+    assert r.status_code == 200 and r.json() == {"user": None}
 
 
 def test_unknown_provider(client):

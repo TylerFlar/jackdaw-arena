@@ -157,7 +157,7 @@ def episode(request: Request, response: Response, episode_id: uuid.UUID) -> dict
     return episode_summary(row, agent.slug)
 
 
-@router.get("/episodes/{episode_id}/frames")
+@router.get("/episodes/{episode_id}/frames", response_model=schemas.FramesDoc)
 async def episode_frames(
     request: Request,
     response: Response,
@@ -173,7 +173,7 @@ async def episode_frames(
     return doc
 
 
-@router.get("/episodes/{episode_id}/tape")
+@router.get("/episodes/{episode_id}/tape", response_model=schemas.TapeDoc)
 def episode_tape(request: Request, response: Response, episode_id: uuid.UUID) -> dict[str, Any]:
     row, _ = _public_episode(request, episode_id)
     if row.status != "ended":
@@ -182,7 +182,7 @@ def episode_tape(request: Request, response: Response, episode_id: uuid.UUID) ->
     return tape_document(row)
 
 
-@router.get("/catalog")
+@router.get("/catalog", response_model=schemas.Catalog)
 def get_catalog(response: Response) -> dict[str, Any]:
     response.headers["Cache-Control"] = "public, max-age=86400"
     return {"engine_version": ENGINE_VERSION, **catalog()}
