@@ -30,7 +30,10 @@ FROM public.ecr.aws/docker/library/python:3.13-slim-trixie
 RUN useradd --create-home --uid 10001 arena
 COPY --from=adapter /lambda-adapter /opt/extensions/lambda-adapter
 COPY --from=build /app/.venv /app/.venv
-ENV PATH=/app/.venv/bin:$PATH \
+# The git SHA this image was built from (deploys pass it); served by /api/version.
+ARG BUILD=dev
+ENV ARENA_BUILD=$BUILD \
+    PATH=/app/.venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     AWS_LWA_PORT=8000 \
     AWS_LWA_READINESS_CHECK_PATH=/healthz \

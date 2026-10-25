@@ -48,6 +48,7 @@ def test_events_run_tasks_and_refuse_http_callers(client, make_app, settings):
 
     with TestClient(api) as c:
         assert c.post("/events", json={"task": "warm"}).status_code == 200
+        assert c.post("/events", json={"task": "health"}).json() == {"ok": True, "build": "dev"}
         assert c.post("/events", json={"task": "migrate"}).status_code == 403
     assert client.post("/events", json={"task": "nope"}).status_code == 400
 

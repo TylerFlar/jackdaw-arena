@@ -13,6 +13,8 @@ from typing import Literal
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEV_SESSION_SECRET = "dev-only-session-secret-change-me"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ARENA_", extra="ignore")
@@ -35,7 +37,7 @@ class Settings(BaseSettings):
     # The site's public origin: OAuth redirect URIs and the Origin check use it.
     public_url: str = "http://localhost:5173"
 
-    session_secret: SecretStr = SecretStr("dev-only-session-secret-change-me")
+    session_secret: SecretStr = SecretStr(DEV_SESSION_SECRET)
     session_days: int = 30
     # CloudFront adds this header to every request it forwards. Without it, a request reached
     # the Function URL directly and is refused. Unset outside AWS.
@@ -83,7 +85,7 @@ def load_settings() -> Settings:
     set. Environment variables win over SSM, so a value can be overridden for debugging."""
     settings = Settings()
     if not settings.ssm_path:
-        return settings
+        return check_production(settings)
     import os
 
     import boto3
@@ -100,4 +102,21 @@ def load_settings() -> Settings:
     overrides = {
         k: v for k, v in values.items() if k in fields and f"ARENA_{k.upper()}" not in os.environ
     }
-    return Settings(**overrides)
+    return check_production(Settings(**overrides))
+
+
+def check_production(settings: Settings) -> Settings:
+    """Refuse to start in production on development defaults (say, SSM unreadable): the
+    deploy's health check fails, so the version never takes traffic."""
+    if settings.env != "prod":
+        return settings
+    problems = []
+    if settings.session_secret.get_secret_value() == DEV_SESSION_SECRET:
+        problems.append("session_secret is the development default")
+    if settings.origin_verify_secret is None:
+        problems.append("origin_verify_secret is unset")
+    if not settings.cookie_secure:
+        problems.append("public_url isn't https")
+    if problems:
+        raise RuntimeError("refusing to start in production: " + "; ".join(problems))
+    return settings

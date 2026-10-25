@@ -12,3 +12,17 @@
 - The website: leaderboard with interval marks, agent pages with stat tiles and a blinds-beaten histogram, a step-by-step replay viewer (keyboard, playback, action log), a getting-started guide, and account pages for agents and tokens. CSS cards only, no game art; light and dark themes.
 - One container image for Lambda and local Docker (the Lambda Web Adapter as an extension), and a docker compose stack that stands in for AWS in end-to-end tests: Caddy for CloudFront, a mock OpenID provider for GitHub.
 - The `jackdaw-arena` client: `ArenaEnv`, a drop-in for jackdaw's `BalatroGymnasiumEnv`; `evaluate()` with the repo's chooser signature, an exact budget and resumption; a CLI to evaluate, download tapes and verify them.
+- Terraform for AWS, serverless end to end:
+  - CloudFront in front of a private S3 site and the API's Lambda function URL, with a strict CSP and HSTS, and edge caching only for public reads.
+  - Aurora DSQL, with a scratch cluster for CI and daily backups.
+  - A Route 53 zone with CAA records, and a DNS-validated ACM certificate.
+  - EventBridge Scheduler for the janitor and keep-warm pings.
+  - Email alarms and a monthly budget.
+  - OIDC roles for GitHub Actions.
+  - Offline tests with a mocked provider, and tflint.
+- Releases with `infra/scripts/deploy.py`: migrate, publish, health-check the new version, move the `live` alias, upload the site, smoke-test, and move back on failure. `--rollback` is the manual version of that last step.
+- GitHub Actions:
+  - CI: the API, the client on Python 3.10 and 3.13, the site, the infrastructure, the Lambda image, end-to-end tests, and DSQL tests on `main`.
+  - Deploy: every green push to `main`.
+  - Uptime checks.
+- API responses over 1 KB are gzip-compressed, and the API refuses to start in production on development defaults.

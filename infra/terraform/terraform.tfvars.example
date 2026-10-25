@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (gitignored). Everything but api_image_uri has a default; see
+# variables.tf.
+
+# The first image, pushed before the full apply (Lambda needs it to exist). Deploys replace the
+# functions' code afterwards without Terraform.
+api_image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/arena-api:0123456789abcdef0123456789abcdef01234567"
+
+# Alarms and the monthly budget email here (SNS asks you to confirm twice: once per region).
+alert_email = "you@example.com"
+
+# Scaling knobs, for later:
+# api_max_concurrency = 50   # reserve (and cap) Lambda concurrency
+# api_memory_mb       = 1769 # one full vCPU
+# monthly_budget_usd  = 20

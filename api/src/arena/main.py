@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -74,6 +75,11 @@ def create_app(
         ),
     )
 
+    # CloudFront doesn't compress what it doesn't cache (agent steps, account pages), so the
+    # app does: a step response shrinks about 7x. Added first, so it sits inside the middlewares
+    # below and sees each response whole (they stream, which would defeat minimum_size).
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=6)
+
     secret = (
         settings.origin_verify_secret.get_secret_value().encode()
         if (settings.origin_verify_secret)
@@ -116,7 +122,7 @@ def create_app(
     async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]
         response = await call_next(request)
         # Agent and account traffic is per-caller: never cache it anywhere.
-        if request.url.path.startswith(("/api/v1", "/api/me", "/auth")):
+        if request.url.path.startswith(("/api/v1", "/api/me", "/api/admin", "/auth")):
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 

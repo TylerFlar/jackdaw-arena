@@ -1,4 +1,5 @@
-"""Lambda events that aren't HTTP requests: migrations, the janitor, house runs, keep-warm pings.
+"""Lambda events that aren't HTTP requests: migrations, the janitor, house runs, keep-warm pings
+and deploy health checks.
 
 The Lambda Web Adapter forwards non-HTTP invocations (EventBridge Scheduler, ``aws lambda
 invoke``) to ``POST /events``. HTTP requests that came through a Function URL carry
@@ -13,6 +14,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
+from sqlalchemy import text
 
 from arena.db.migrate import grant_app_role, migrate
 
@@ -32,6 +34,11 @@ def events(event: Event, request: Request) -> dict[str, Any]:
     settings = state.settings
     if event.task == "warm":
         return {"ok": True}
+    if event.task == "health":
+        # A deploy invokes a newly published version with this before moving traffic to it.
+        with state.engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"ok": True, "build": settings.build}
     if settings.role == "api":
         raise HTTPException(403, f"the api function doesn't run {event.task!r}")
     params = event.model_extra or {}

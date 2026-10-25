@@ -336,6 +336,17 @@ def test_origin_verify_secret(make_app, agents, settings):
         assert ok.headers["cache-control"] == "no-store"
 
 
+def test_large_responses_are_compressed(client, agents):
+    _, token = agents.agent()
+    keys = [str(uuid.uuid4()) for _ in range(2)]
+    r = client.post("/api/v1/episodes", json={"track": "red-1", "keys": keys},
+                    headers={**bearer(token), "Accept-Encoding": "gzip"})  # fmt: skip
+    assert r.status_code == 201
+    assert r.headers["content-encoding"] == "gzip"
+    assert r.headers["cache-control"] == "no-store"
+    assert len(r.json()["episodes"]) == 2  # httpx decoded it
+
+
 def test_spec_describes_the_local_env(client):
     spec = client.get("/api/v1/spec").json()
     local = BalatroGymnasiumEnv(adapter_factory=DirectAdapter)

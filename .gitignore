@@ -28,8 +28,10 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
-# Local variable files can hold account details; examples are committed as *.tfvars.example.
+# Local variable and backend files can hold account details; examples are committed as
+# *.example.
 *.tfvars
+backend.hcl
 
 # Secrets and local config
 .env
