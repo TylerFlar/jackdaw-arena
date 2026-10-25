@@ -1,0 +1,33 @@
+name: Release
+
+# On a release tag (vX.Y.Z): the tag must name the version (scripts/check_version.py), and the
+# client's wheel and sdist go into a draft GitHub release, with the changelog's section as its
+# notes, to publish by hand (CONTRIBUTING.md). The site itself was deployed by the release's
+# merge into main (deploy.yml).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # the draft release
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: The tag names the version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: python3 scripts/check_version.py --tag "$TAG" --notes > notes.md
+      - name: Build the client
+        run: uv build client --out-dir dist
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* --draft --verify-tag \
+            --title "Jackdaw Arena ${TAG#v}" --notes-file notes.md

@@ -1,9 +1,10 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
 
 permissions:
   contents: read
@@ -13,6 +14,14 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  version:
+    # The API, the client and the site name one version, and CHANGELOG.md has its section.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: python3 scripts/check_version.py
+
   api:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
