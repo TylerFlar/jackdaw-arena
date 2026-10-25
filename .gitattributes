@@ -1,0 +1,8 @@
+# Everything is LF in the repo: shell scripts and templates run on Linux (Lambda, CI), and
+# CRLF breaks them. Windows checkouts keep LF too.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.woff2 binary
+*.zip binary
