@@ -2,13 +2,16 @@
 and deploy health checks.
 
 The Lambda Web Adapter forwards non-HTTP invocations (EventBridge Scheduler, ``aws lambda
-invoke``) to ``POST /events``. HTTP requests that came through a Function URL carry
-``x-amzn-request-context`` and are refused here, and CloudFront never routes ``/events``. So
-only callers allowed to invoke the function (IAM) reach these tasks.
+invoke``) to ``POST /events``. It sets ``x-amzn-request-context`` on every request, replacing
+any the caller sent: the event's request context as JSON for HTTP events (a Function URL
+request), and ``null`` for these pass-through invocations. Requests with a real context are
+refused here, and CloudFront never routes ``/events``. So only callers allowed to invoke the
+function (IAM) reach these tasks.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -26,9 +29,19 @@ class Event(BaseModel, extra="allow"):
     task: str
 
 
+def _over_http(request: Request) -> bool:
+    raw = request.headers.get("x-amzn-request-context")
+    if raw is None:
+        return False  # not behind the adapter: local runs and tests
+    try:
+        return json.loads(raw) is not None
+    except ValueError:
+        return True
+
+
 @router.post("/events")
 def events(event: Event, request: Request) -> dict[str, Any]:
-    if request.headers.get("x-amzn-request-context"):
+    if _over_http(request):
         raise HTTPException(403, "tasks can't be triggered over HTTP")
     state = request.app.state
     settings = state.settings

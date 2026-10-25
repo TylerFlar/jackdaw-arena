@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from sqlalchemy import text
 
@@ -39,10 +41,15 @@ def test_smart_baseline_reproduces_the_repo_evaluation(app):
 def test_events_run_tasks_and_refuse_http_callers(client, make_app, settings):
     assert client.post("/events", json={"task": "warm"}).json() == {"ok": True}
     assert client.post("/events", json={"task": "janitor"}).json() == {"ok": True, "ended": 0}
-    # Arrived through a Function URL: never a task.
-    r = client.post("/events", json={"task": "janitor"},
-                    headers={"x-amzn-request-context": "{}"})  # fmt: skip
-    assert r.status_code == 403
+    # Arrived through a Function URL (the adapter sets the request context): never a task.
+    url_context = json.dumps({"http": {"method": "POST", "path": "/events"}})
+    for ctx in (url_context, "{}", "not json"):
+        r = client.post("/events", json={"task": "janitor"},
+                        headers={"x-amzn-request-context": ctx})  # fmt: skip
+        assert r.status_code == 403, ctx
+    # A direct invocation: the adapter's pass-through context serializes as null.
+    r = client.post("/events", json={"task": "janitor"}, headers={"x-amzn-request-context": "null"})
+    assert r.json() == {"ok": True, "ended": 0}
     api = make_app(settings=settings.model_copy(update={"role": "api"}))
     from fastapi.testclient import TestClient
 
