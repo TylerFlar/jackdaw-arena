@@ -14,7 +14,7 @@ export function ReplayViewer({ episodeId, mine = false }: { episodeId: string; m
   const page = Math.floor(i / FRAME_PAGE);
   // The frame count comes from the server: a tape can be shorter than the episode's step count,
   // because a refused or engine-error step isn't on it.
-  const { data: first } = useFrames(episodeId, 0, true, mine);
+  const { data: first, error: firstError } = useFrames(episodeId, 0, true, mine);
   const { data, error } = useFrames(episodeId, page, true, mine);
   const total = first?.total ?? data?.total ?? 1;
   const last = total - 1;
@@ -62,6 +62,15 @@ export function ReplayViewer({ episodeId, mine = false }: { episodeId: string; m
     const current = logRef.current?.querySelector<HTMLElement>('[aria-current="step"]');
     current?.scrollIntoView?.({ block: "nearest" });
   }, [i]);
+
+  // Nothing to step through until the server has said how many frames there are.
+  if (!first) {
+    return (
+      <section className="panel" aria-label="Replay">
+        {firstError ? <p className="error">The replay couldn't load.</p> : <p className="muted">Loading the replay…</p>}
+      </section>
+    );
+  }
 
   const frame: Frame | undefined = data?.frames.find((f) => f.i === i);
   return (
