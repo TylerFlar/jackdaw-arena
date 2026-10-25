@@ -209,6 +209,24 @@ pre {
   gap: 0.5rem;
   white-space: nowrap;
 }
+/* Phones: the brand and the account on the first row, the navigation under them. */
+@media (max-width: 640px) {
+  .header .container {
+    flex-wrap: wrap;
+    height: auto;
+    gap: 0.25rem 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.4rem;
+  }
+  .header .brand {
+    flex: 1;
+  }
+  .header .nav {
+    order: 3;
+    flex-basis: 100%;
+    margin-left: -0.6rem;
+  }
+}
 .avatar {
   width: 24px;
   height: 24px;
@@ -395,35 +413,42 @@ tr:last-child td {
 .rank {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  width: 2.5rem;
+  width: 3.5rem;
+  text-align: center;
 }
-/* The leaderboard's sections share one column grid: the agent column takes what the fixed
-   columns leave (less the rank column, in the ranked table), so the rest line up. Narrow
-   screens scroll the table rather than squeeze it. */
-table.board {
-  table-layout: fixed;
-  min-width: 57rem;
+
+/* --- the leaderboard --------------------------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.6rem;
 }
-.board .col-rank {
-  width: 3rem;
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-radius: 8px 8px 0 0;
+  color: var(--ink-2);
+  font-weight: 600;
 }
-.board .col-n {
-  width: 6.5rem;
+.tab:hover {
+  color: var(--ink);
+  text-decoration: none;
 }
-.board .col-blinds {
-  width: 8.5rem;
+.tab[aria-current="page"] {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
 }
-.board .col-ci {
-  width: calc(132px + 1.2rem); /* the interval mark and the cell's padding */
-}
-.board .col-ante {
-  width: 6.5rem;
-}
-.board .col-win {
-  width: 6rem;
-}
-.board .col-best {
-  width: 6rem;
+.rule {
+  margin-bottom: 1rem;
 }
 .board .agent-cell {
   min-width: 0;
@@ -436,6 +461,93 @@ table.board {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* First, second and third: gold, silver and bronze. */
+.place {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+}
+.place.p1 {
+  background: #f3c75a;
+  color: #4a3500;
+}
+.place.p2 {
+  background: #d5d8dc;
+  color: #2c3036;
+}
+.place.p3 {
+  background: #e3a77b;
+  color: #4a2309;
+}
+.score-value {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.margin {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.help {
+  display: inline-grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1px solid var(--axis);
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: none;
+  vertical-align: middle;
+}
+.help:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+.board tr.baseline td {
+  color: var(--muted);
+}
+.board tr.baseline .score-value {
+  color: var(--ink-2);
+}
+.board tr.group th {
+  padding-top: 1rem;
+  border-bottom: 1px solid var(--grid);
+}
+.progress-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.progress-cell progress {
+  width: 4.5rem;
+  height: 6px;
+  appearance: none;
+  border: none;
+  border-radius: 3px;
+  background: var(--grid);
+  overflow: hidden;
+}
+.progress-cell progress::-webkit-progress-bar {
+  background: var(--grid);
+}
+.progress-cell progress::-webkit-progress-value {
+  background: var(--series-1);
+}
+.progress-cell progress::-moz-progress-bar {
+  background: var(--series-1);
+}
+/* Narrow screens keep rank, agent, score and runs. */
+@media (max-width: 640px) {
+  .board .opt,
+  .board .avatar {
+    display: none;
+  }
+  .board .rank {
+    width: 2.5rem;
+  }
+}
 .agent-cell {
   display: flex;
   align-items: center;
@@ -444,6 +556,9 @@ table.board {
 }
 .agent-cell .who {
   display: grid;
+}
+.agent-cell .avatar {
+  flex: none;
 }
 .badge {
   display: inline-block;
@@ -535,24 +650,6 @@ table.board {
 .tooltip strong {
   font-variant-numeric: tabular-nums;
 }
-.interval {
-  display: block;
-}
-.interval .ci {
-  stroke: var(--series-1);
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-.interval .dot {
-  fill: var(--series-1);
-  stroke: var(--surface);
-  stroke-width: 2;
-}
-.interval .track {
-  stroke: var(--grid);
-  stroke-width: 1;
-}
-
 /* --- cards without the game's art: plain CSS -------------------------------------------------- */
 
 .cards {
@@ -768,6 +865,11 @@ table.board {
 .icon.stakes {
   width: 29px;
   height: 29px;
+}
+.icon.centers {
+  width: 21px;
+  aspect-ratio: 71 / 95;
+  image-rendering: auto;
 }
 .brand,
 h1,

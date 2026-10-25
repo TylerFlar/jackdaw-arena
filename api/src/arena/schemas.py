@@ -155,6 +155,7 @@ class Stats(BaseModel):
     truncated: float
     forfeited: float
     unverified: int
+    last_played: datetime | None = Field(None, description="when its latest run ended")
 
 
 class BoardRow(BaseModel):

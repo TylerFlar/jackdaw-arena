@@ -68,7 +68,8 @@ export function cardArt(card: CardModel, info: (key: string) => Info, back: stri
   return { layers, soul, scale: key === "j_wee" ? 0.7 : undefined };
 }
 
-/** The atlas a catalog table's sprites live in. */
-export function tableCell(atlas: "tags" | "stakes" | "blinds", pos: Pos): Cell | null {
+/** A catalog entry's sprite in its atlas: a tag, a stake's chip, a blind's chip or a deck. */
+export function tableCell(atlas: IconAtlas, pos: Pos): Cell | null {
   return cell(atlas, pos);
 }
+export type IconAtlas = "tags" | "stakes" | "blinds" | "centers";

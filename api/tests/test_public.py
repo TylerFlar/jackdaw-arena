@@ -64,6 +64,7 @@ def test_leaderboard_statistics_and_sections(client, agents, ended, budget_3):
     assert math.isclose(s["blinds_sem"], sem)
     assert math.isclose(s["blinds_ci95"][1] - 6.0, Z95 * sem)
     assert math.isclose(s["win_rate"], 1 / 3) and s["win_ci95"] == list(wilson(1, 3))
+    assert s["last_played"] is not None  # when the latest run ended
     # A refused episode (an env bug) scores zero, as in the repo's evaluation.
     assert ranked["refused-run"]["stats"]["blinds_mean"] == 4.0
     assert [row["agent"]["slug"] for row in board["provisional"]] == ["partial-run"]
@@ -154,7 +155,9 @@ def test_replay_frames_and_tape_verify(client, agents):
 
 
 def test_catalog_and_tracks(client):
-    cat = client.get("/api/catalog").json()
+    r = client.get("/api/catalog")
+    assert r.headers["cache-control"] == "public, max-age=300, s-maxage=86400"
+    cat = r.json()
     assert cat["centers"]["j_joker"]["name"] == "Joker"
     assert cat["blinds"]["bl_hook"]["name"] == "The Hook"
     caino = cat["centers"]["j_caino"]

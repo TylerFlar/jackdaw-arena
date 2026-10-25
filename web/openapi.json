@@ -1747,6 +1747,19 @@
       "title": "Forfeited",
       "type": "number"
      },
+     "last_played": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "when its latest run ended",
+      "title": "Last Played"
+     },
      "length_mean": {
       "title": "Length Mean",
       "type": "number"

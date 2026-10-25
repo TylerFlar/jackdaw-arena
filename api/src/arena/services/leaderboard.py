@@ -54,6 +54,7 @@ def stats(row: dict[str, Any]) -> dict[str, Any]:
         "truncated": int(row["truncated"] or 0) / n,
         "forfeited": int(row["forfeited"] or 0) / n,
         "unverified": int(row["unverified"] or 0),
+        "last_played": row.get("last_played"),
     }
 
 

@@ -1,149 +1,148 @@
 import { Link, useSearchParams } from "react-router";
 import type { BoardRow, Leaderboard } from "../api/client";
 import { useLeaderboard, useTracks } from "../api/hooks";
-import { IntervalMark } from "../components/Stats";
-import { fixed, interval, pct } from "../lib/format";
+import { runRule, TrackTabs } from "../components/TrackTabs";
+import { ago, fixed, interval, pct } from "../lib/format";
+
+const SCORE_HELP = "Average blinds beaten per run: higher is better. ± is the 95% margin of error.";
 
 export function LeaderboardPage() {
-  const [params, setParams] = useSearchParams();
-  const track = params.get("track") ?? "red-1";
+  const [params] = useSearchParams();
   const { data: tracks } = useTracks();
+  const track = params.get("track") ?? tracks?.[0]?.key ?? "red-1";
   const { data: board, isLoading, error, isPlaceholderData } = useLeaderboard(track);
   const info = tracks?.find((t) => t.key === track);
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Leaderboard</h1>
-        </div>
-        {tracks && tracks.length > 1 && (
-          <label className="inline">
-            Track
-            <select value={track} onChange={(e) => setParams({ track: e.target.value })}>
-              {tracks.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
-      {info && (
-        <p className="muted small">
-          {info.name} · {info.max_steps.toLocaleString("en")}-step cap
-        </p>
-      )}
+      <h1>Leaderboard</h1>
+      {tracks && <TrackTabs tracks={tracks} active={track} to={(key) => `/?track=${encodeURIComponent(key)}`} />}
+      {info && <p className="muted small rule">{runRule(info)}</p>}
       {error && <p className="error">The leaderboard couldn't load. Try again in a moment.</p>}
       {isLoading && <p className="muted">Loading…</p>}
-      {board && (
-        <div style={{ opacity: isPlaceholderData ? 0.5 : 1 }}>
-          <Section title="Ranked" rows={board.ranked} board={board} ranked>
-            No agent has finished its budget yet. <Link to="/docs">Be the first.</Link>
-          </Section>
-          <Section title="Provisional" rows={board.provisional} board={board}>
-            Agents that are still playing their episodes appear here.
-          </Section>
-          <Section title="House baselines" rows={board.house} board={board}>
-            The baselines haven't been run yet.
-          </Section>
-        </div>
-      )}
+      {board && <Standings board={board} dim={isPlaceholderData} />}
     </>
   );
 }
 
-function Section({
-  title,
-  rows,
-  board,
-  ranked = false,
-  children,
-}: {
-  title: string;
-  rows: BoardRow[];
-  board: Leaderboard;
-  ranked?: boolean;
-  children: React.ReactNode;
-}) {
-  const all = [...board.ranked, ...board.provisional, ...board.house];
-  // One scale for every row on the page, so intervals compare across sections.
-  const max = Math.max(1, ...all.map((r) => r.stats.blinds_ci95?.[1] ?? r.stats.blinds_mean));
-  // aria-labelledby takes a space-separated list of ids: the id must not contain spaces.
-  const id = `sec-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+const byScore = (a: BoardRow, b: BoardRow) =>
+  b.stats.blinds_mean - a.stats.blinds_mean || a.agent.slug.localeCompare(b.agent.slug);
+
+function Standings({ board, dim }: { board: Leaderboard; dim: boolean }) {
+  // Baselines sit among the ranked agents, by score, so it's plain where an agent lands.
+  const finished = [...board.ranked, ...board.house].sort(byScore);
   return (
-    <section className="panel" aria-labelledby={id}>
-      <h2 id={id}>{title}</h2>
-      {rows.length === 0 ? (
-        <p className="muted">{children}</p>
-      ) : (
+    <section className="panel" aria-label="Standings" style={{ opacity: dim ? 0.5 : 1 }}>
+      {board.ranked.length === 0 && (
+        <p className="muted">
+          No agent has finished its {board.k} runs yet. <Link to="/docs">Be the first.</Link>
+        </p>
+      )}
+      {(finished.length > 0 || board.provisional.length > 0) && (
         <div className="table-wrap">
-          {/* Every section is its own table: fixed column widths keep the columns, and so the
-              interval marks, lined up from one section to the next. */}
           <table className="board">
-            <colgroup>
-              {ranked && <col className="col-rank" />}
-              <col />
-              <col className="col-n" />
-              <col className="col-blinds" />
-              <col className="col-ci" />
-              <col className="col-ante" />
-              <col className="col-win" />
-              <col className="col-best" />
-            </colgroup>
             <thead>
               <tr>
-                {ranked && <th>#</th>}
-                <th>Agent</th>
-                <th className="num">Episodes</th>
-                <th className="num">Blinds beaten</th>
-                <th aria-label="95% interval">95% CI</th>
-                <th className="num">Mean ante</th>
-                <th className="num">Win rate</th>
-                <th className="num">Best ante</th>
+                <th scope="col" className="rank">
+                  Rank
+                </th>
+                <th scope="col">Agent</th>
+                <th scope="col" className="num">
+                  Score{" "}
+                  <Link to="/docs#scoring" className="help" title={SCORE_HELP} aria-label={`How scores work. ${SCORE_HELP}`}>
+                    ?
+                  </Link>
+                </th>
+                <th scope="col" className="num">
+                  Runs
+                </th>
+                <th scope="col" className="num opt">
+                  Best ante
+                </th>
+                <th scope="col" className="num opt">
+                  Wins
+                </th>
+                <th scope="col" className="num opt">
+                  Last played
+                </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.agent.slug}>
-                  {ranked && <td className="rank">{r.rank}</td>}
-                  <td>
-                    <div className="agent-cell">
-                      {r.agent.owner.avatar_url && <img className="avatar" src={r.agent.owner.avatar_url} alt="" />}
-                      <div className="who">
-                        <Link to={`/agents/${r.agent.slug}`}>{r.agent.name}</Link>
-                        <span className="muted small">{r.agent.owner.login}</span>
-                      </div>
-                      {r.stats.unverified > 0 && (
-                        <span className="badge bad" title="Episodes whose replay didn't verify">
-                          {r.stats.unverified} unverified
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="num">
-                    {r.stats.n}
-                    {!ranked && r.agent.kind !== "house" && <span className="muted"> / {board.k}</span>}
-                  </td>
-                  <td className="num">
-                    <strong>{fixed(r.stats.blinds_mean)}</strong>
-                    {r.stats.blinds_sem != null && <span className="muted"> ± {fixed(r.stats.blinds_sem)}</span>}
-                  </td>
-                  <td>
-                    <IntervalMark mean={r.stats.blinds_mean} ci={r.stats.blinds_ci95} max={max} />
-                  </td>
-                  <td className="num">{fixed(r.stats.ante_mean)}</td>
-                  <td className="num" title={`95% CI ${interval(r.stats.win_ci95, 1, true)}`}>
-                    {pct(r.stats.win_rate)}
-                  </td>
-                  <td className="num">{r.stats.max_ante}</td>
-                </tr>
+              {finished.map((r) => (
+                <Row key={r.agent.slug} row={r} k={board.k} />
               ))}
             </tbody>
+            {board.provisional.length > 0 && (
+              <tbody>
+                <tr className="group">
+                  <th scope="rowgroup" colSpan={7}>
+                    In progress
+                  </th>
+                </tr>
+                {board.provisional.map((r) => (
+                  <Row key={r.agent.slug} row={r} k={board.k} playing />
+                ))}
+              </tbody>
+            )}
           </table>
         </div>
       )}
     </section>
+  );
+}
+
+function Row({ row, k, playing = false }: { row: BoardRow; k: number; playing?: boolean }) {
+  const { agent, stats: s } = row;
+  const baseline = agent.kind === "house";
+  const ci = s.blinds_ci95;
+  const margin = ci ? (ci[1]! - ci[0]!) / 2 : null;
+  const range = `${ci ? `95% range ${interval(ci)}, ` : ""}${s.n} runs`;
+  return (
+    <tr className={baseline ? "baseline" : undefined}>
+      <td className="rank">{row.rank ? <span className={`place p${Math.min(row.rank, 4)}`}>{row.rank}</span> : "–"}</td>
+      <td>
+        <div className="agent-cell">
+          {agent.owner.avatar_url ? (
+            <img className="avatar" src={agent.owner.avatar_url} alt="" />
+          ) : (
+            <span className="avatar" aria-hidden="true" />
+          )}
+          <div className="who">
+            <Link to={`/agents/${agent.slug}`}>{agent.name}</Link>
+            {baseline ? (
+              <span>
+                <span className="badge" title={agent.description || undefined}>
+                  Baseline
+                </span>
+              </span>
+            ) : (
+              <span className="muted small">{agent.owner.login}</span>
+            )}
+          </div>
+          {s.unverified > 0 && (
+            <span className="badge bad" title="Runs whose replay didn't verify">
+              {s.unverified} unverified
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="num" title={range}>
+        <span className="score-value">{fixed(s.blinds_mean)}</span>
+        {margin != null && <span className="margin"> ±{fixed(margin)}</span>}
+      </td>
+      <td className="num">
+        {playing ? (
+          <span className="progress-cell">
+            <progress value={s.n} max={k} aria-label={`${s.n} of ${k} runs`} />
+            {s.n} / {k}
+          </span>
+        ) : (
+          s.n
+        )}
+      </td>
+      <td className="num opt">{s.max_ante}</td>
+      <td className="num opt">{pct(s.win_rate, s.win_rate ? 1 : 0)}</td>
+      <td className="num opt">{ago(s.last_played)}</td>
+    </tr>
   );
 }

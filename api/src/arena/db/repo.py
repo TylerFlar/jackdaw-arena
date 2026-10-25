@@ -579,7 +579,8 @@ def board_rows(
             "sum(e.t) AS steps, "
             "sum(CASE WHEN e.end_reason = 'max_steps' THEN 1 ELSE 0 END) AS truncated, "
             "sum(CASE WHEN e.end_reason IN ('forfeit', 'idle') THEN 1 ELSE 0 END) AS forfeited, "
-            "sum(CASE WHEN e.verified THEN 0 ELSE 1 END) AS unverified "
+            "sum(CASE WHEN e.verified THEN 0 ELSE 1 END) AS unverified, "
+            "max(e.ended_at) AS last_played "
             "FROM episodes e WHERE e.track = :track AND e.season = :season "
             "AND e.status = 'ended' "
             + ("AND e.agent_id = :agent " if agent_id is not None else "")

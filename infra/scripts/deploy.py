@@ -247,7 +247,8 @@ def upload_site(aws: Aws, cfg: dict[str, str], dist: Path, sha: str) -> None:
     for p in rest:
         put(p, "no-cache" if p.name == "index.html" else "public, max-age=300")
     log(f"uploaded {len(new)} new assets and {len(rest)} other files")
-    paths = ["/" + key[p] for p in rest]
+    # The catalog is cached at the edge for a day, and can change with the release.
+    paths = ["/" + key[p] for p in rest] + ["/api/catalog"]
     aws.cf.create_invalidation(
         DistributionId=cfg["DISTRIBUTION_ID"],
         InvalidationBatch={

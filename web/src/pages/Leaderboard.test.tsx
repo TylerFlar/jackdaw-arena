@@ -7,45 +7,44 @@ import { LeaderboardPage } from "./Leaderboard";
 const routes = [{ path: "/", element: <LeaderboardPage /> }];
 
 describe("leaderboard", () => {
-  it("shows ranked, provisional and house agents in their sections", async () => {
+  it("ranks agents by score, with the baselines among them unranked", async () => {
     renderAt("/", routes);
-    const ranked = await screen.findByRole("region", { name: "Ranked" });
-    const rows = within(ranked).getAllByRole("row").slice(1);
-    expect(rows.map((r) => within(r).getByRole("link").textContent)).toEqual(["PPO-BIG", "PPO-DEMO"]);
+    const standings = await screen.findByRole("region", { name: "Standings" });
+    const [, finished] = within(standings).getAllByRole("rowgroup");
+    const rows = within(finished!).getAllByRole<HTMLTableRowElement>("row");
+    expect(rows.map((r) => within(r).getAllByRole("link")[0]!.textContent)).toEqual(["PPO-BIG", "HOUSE-SMART", "PPO-DEMO"]);
+    expect(rows.map((r) => r.cells[0]!.textContent)).toEqual(["1", "–", "2"]);
+    expect(within(rows[1]!).getByText("Baseline")).toBeInTheDocument();
+    // The score, and its 95% margin of error: half the interval.
     expect(within(rows[0]!).getByText("5.90")).toBeInTheDocument();
-    expect(
-      within(rows[0]!).getByRole("img", { name: /mean 5\.90, 95% CI 5\.60 to 6\.20/ }),
-    ).toBeInTheDocument();
-    const provisional = screen.getByRole("region", { name: "Provisional" });
-    expect(within(provisional).getByText("/ 500")).toBeInTheDocument();
-    const house = screen.getByRole("region", { name: "House baselines" });
-    expect(within(house).getByText("HOUSE-SMART")).toBeInTheDocument();
+    expect(within(rows[0]!).getByText("±0.30")).toBeInTheDocument();
+    expect(rows[0]!.cells[2]).toHaveAttribute("title", "95% range 5.60 – 6.20, 500 runs");
   });
 
-  it("lays every section on one column grid, so the interval marks line up", async () => {
-    const { container } = renderAt("/", routes);
-    await screen.findByRole("region", { name: "Ranked" });
-    const grids = [...container.querySelectorAll("table")].map((t) => ({
-      board: t.classList.contains("board"),
-      cols: [...t.querySelectorAll("col")].map((c) => c.className),
-    }));
-    expect(grids).toHaveLength(3);
-    const tail = ["", "col-n", "col-blinds", "col-ci", "col-ante", "col-win", "col-best"];
-    expect(grids[0]).toEqual({ board: true, cols: ["col-rank", ...tail] });
-    expect(grids.slice(1)).toEqual([
-      { board: true, cols: tail },
-      { board: true, cols: tail },
-    ]);
+  it("lists agents still playing under In progress, with how far they've got", async () => {
+    renderAt("/", routes);
+    const group = await screen.findByRole("rowheader", { name: "In progress" });
+    const rows = within(group.closest("tbody")!).getAllByRole("row");
+    expect(within(rows[1]!).getByRole("link", { name: "NEWCOMER" })).toBeInTheDocument();
+    expect(within(rows[1]!).getByRole("progressbar", { name: "37 of 500 runs" })).toHaveAttribute("value", "37");
+  });
+
+  it("explains the score and shows the track as a tab", async () => {
+    renderAt("/", routes);
+    const help = await screen.findByRole("link", { name: /How scores work/ });
+    expect(help).toHaveAttribute("href", "/docs#scoring");
+    const tabs = await screen.findByRole("navigation", { name: "Tracks" });
+    expect(within(tabs).getByRole("link", { name: "Red Deck, White Stake" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("A run ends with a win, a loss, or after 2,000 actions.")).toBeInTheDocument();
   });
 
   it("explains an empty board", async () => {
     server.use(
-      http.get(url("/api/leaderboard"), () =>
-        HttpResponse.json({ ...board, ranked: [], provisional: [], house: [] }),
-      ),
+      http.get(url("/api/leaderboard"), () => HttpResponse.json({ ...board, ranked: [], provisional: [], house: [] })),
     );
     renderAt("/", routes);
-    expect(await screen.findByText(/No agent has finished its budget yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/No agent has finished its 500 runs yet/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Be the first." })).toHaveAttribute("href", "/docs");
+    expect(screen.queryByRole("table")).toBeNull();
   });
 });

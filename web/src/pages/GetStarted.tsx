@@ -1,4 +1,5 @@
-import { Link } from "react-router";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router";
 import { useMe, useTracks } from "../api/hooks";
 
 const INSTALL = `uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena#subdirectory=client"`;
@@ -30,13 +31,17 @@ export function GetStartedPage() {
   const { data: me } = useMe();
   const { data: tracks } = useTracks();
   const k = tracks?.[0]?.episodes_per_agent ?? 500;
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [hash]);
   return (
     <>
       <h1>Get started</h1>
       <p className="lede">
-        Your agent runs on your machine. Each episode it plays runs on the server, on a seed chosen
-        there and kept secret until the episode ends. The observations and actions are exactly those
-        of jackdaw's <code>BalatroGymnasiumEnv</code>, so a policy trained locally plugs in unchanged.
+        Your agent runs on your machine. Every run it plays happens on the server, on a seed chosen
+        there and kept secret until the run ends. The observations and actions are exactly those of
+        jackdaw's <code>BalatroGymnasiumEnv</code>, so a policy trained locally plugs in unchanged.
       </p>
 
       <section className="panel">
@@ -71,24 +76,45 @@ export function GetStartedPage() {
         </p>
       </section>
 
+      <section className="panel" id="scoring">
+        <h2>How agents are scored</h2>
+        <ul>
+          <li>
+            <strong>Score</strong> is the average number of blinds an agent beats per run: higher is
+            better. Small and big blinds count as well as bosses, so clearing ante 1 is 3.
+          </li>
+          <li>
+            The <strong>±</strong> after a score is its 95% margin of error: the agent's true average
+            is very likely within that distance of its score. When two agents' ranges overlap, more
+            runs could swap them.
+          </li>
+          <li>
+            An agent ranks once all <strong>{k} runs</strong> on a track have ended. Until then it's
+            listed under In progress.
+          </li>
+          <li>
+            Every run counts. A run stopped early (a reset, closing the client, or 10 minutes idle)
+            scores the blinds it beat before it stopped, so stopping never helps. A run the engine
+            refuses, when an action the mask allowed turns out to be illegal, scores 0.
+          </li>
+          <li>
+            The <strong>baselines</strong> show where simple play lands: <em>random</em> picks any legal
+            action, and <em>smart</em> is jackdaw's hand-written agent. Smart reads face-down cards,
+            so it isn't ranked.
+          </li>
+        </ul>
+      </section>
+
       <section className="panel">
         <h2>The rules</h2>
         <ul>
+          <li>Each agent plays {k} runs per track. A new version of a policy is a new agent.</li>
           <li>
-            Each agent has a budget of <strong>{k} episodes</strong> per track, and ranks once all of
-            them have ended. A new version of a policy is a new agent.
-          </li>
-          <li>
-            Every episode you start counts. Resetting or closing mid-episode forfeits it, and an
-            episode idle for 10 minutes is ended. Both are scored as far as they got, so stopping
-            early never helps.
-          </li>
-          <li>
-            Seeds are 16 random characters, unique to each episode and secret until it ends. Then the
+            Seeds are 16 random characters, unique to each run and secret until it ends. Then the
             seed, the full action tape and the final state hash are public, and anyone can replay
             them with jackdaw.
           </li>
-          <li>Every ended episode is verified on the server by an independent replay of its tape.</li>
+          <li>Every ended run is verified on the server by an independent replay of its tape.</li>
           <li>Unlisted agents stay off the leaderboard; their replays are visible only to you.</li>
         </ul>
       </section>

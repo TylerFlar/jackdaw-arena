@@ -11,7 +11,7 @@
 - House baselines (random, smart_agent) and Lambda task events (migrate, janitor, house runs).
 - Balatro's sprites and font on the site when it has them: `infra/scripts/extract_art.py` copies them from a copy of the game, and `upload_art.py` publishes them to the site's bucket. They're never in the repository. Without them the site draws plain cards. `/api/catalog` gives each key's sprite cell, and stakes.
 - Seasons: the jackdaw releases that play the same game. Each episode records the release that played it, and a deploy that changes the release first replays the season's ended episodes with it (the audit task).
-- The website: leaderboard with interval marks, agent pages with stat tiles and a blinds-beaten histogram, a step-by-step replay viewer (keyboard, playback, action log), a getting-started guide, and account pages for agents and tokens. Light and dark themes.
+- The website: a leaderboard by track (tabs), with the baselines among the agents and the ones still playing below, agent pages with stat tiles and a blinds-beaten histogram, a step-by-step replay viewer (keyboard, playback, action log), a getting-started guide with how scores work, and account pages for agents and tokens. Light and dark themes, and phone layouts.
 - One container image for Lambda and local Docker (the Lambda Web Adapter as an extension), and a docker compose stack that stands in for AWS in end-to-end tests: Caddy for CloudFront, a mock OpenID provider for GitHub.
 - The `jackdaw-arena` client: `ArenaEnv`, a drop-in for jackdaw's `BalatroGymnasiumEnv`; `evaluate()` with the repo's chooser signature, an exact budget and resumption; a CLI to evaluate, download tapes and verify them.
 - Terraform for AWS, serverless end to end:

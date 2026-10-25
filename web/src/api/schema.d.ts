@@ -1079,6 +1079,11 @@ export interface components {
             blinds_sem: number | null;
             /** Forfeited */
             forfeited: number;
+            /**
+             * Last Played
+             * @description when its latest run ended
+             */
+            last_played?: string | null;
             /** Length Mean */
             length_mean: number;
             /** Max Ante */

@@ -188,5 +188,6 @@ def episode_tape(request: Request, response: Response, episode_id: uuid.UUID) ->
 
 @router.get("/catalog", response_model=schemas.Catalog)
 def get_catalog(response: Response) -> dict[str, Any]:
-    response.headers["Cache-Control"] = "public, max-age=86400"
+    # A day at the edge, where each release invalidates it; minutes in browsers.
+    response.headers["Cache-Control"] = "public, max-age=300, s-maxage=86400"
     return {"engine_version": ENGINE_VERSION, **catalog()}
