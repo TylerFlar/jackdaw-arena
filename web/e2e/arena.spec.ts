@@ -54,12 +54,12 @@ test("sign in, create an agent, play episodes, and watch a replay", async ({ pag
   const ids = [];
   for (let k = 0; k < 3; k++) ids.push(await playEpisode(request, token));
 
-  // It shows up as provisional (3 of 500 episodes).
+  // It shows up under In progress (3 of its 500 runs).
   await page.goto("/");
-  const provisional = page.getByRole("region", { name: "Provisional" });
-  const row = provisional.getByRole("row").filter({ has: page.getByRole("link", { name }) });
+  const standings = page.getByRole("region", { name: "Standings" });
+  const row = standings.getByRole("row").filter({ has: page.getByRole("link", { name }) });
   await expect(row).toBeVisible();
-  await expect(row.getByText("/ 500")).toBeVisible();
+  await expect(row.getByRole("progressbar", { name: "3 of 500 runs" })).toBeVisible();
 
   // Its page lists the episodes; a replay opens with the seed revealed and steps with the keys.
   await row.getByRole("link", { name }).click();
