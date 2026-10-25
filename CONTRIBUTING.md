@@ -1,5 +1,80 @@
 # Contributing
 
+Thanks for helping. This page covers the branches, what a pull request needs and how a release is
+cut, then the layout, the everyday commands, running your own copy of the site, its game art and
+upgrading jackdaw. The flow is jackdaw's own.
+
+## Branches
+
+| branch | holds | pull requests from |
+|---|---|---|
+| `main` | the releases: each release is a merge from `dev`, tagged `vX.Y.Z` and deployed | `dev` (a release) or `hotfix/*` |
+| `dev` | the next release | your branch |
+
+**Open pull requests against `dev`**, the repository's default branch: branch from `dev`, and a
+new pull request targets it. A required check (`pr-target`) fails any pull request into `main`
+from another branch; if it fails on yours, change the base to `dev` (Edit, next to the title).
+
+`main` only moves at a release, and the Deploy workflow releases every push to it whose CI passes.
+Installing the client from `main` gets the latest release
+(`uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena@main#subdirectory=client"`,
+or `@vX.Y.Z` for a given one); an install from the bare URL gets `dev`.
+
+## A pull request
+
+CI runs on every pull request: the version check; ruff and the API's tests, the slow statistical
+ones included; the client's tests on Python 3.10 and 3.13; the site's lint, types and tests; the
+Terraform checks; the Lambda image; and the end-to-end tests, under the production CSP. The tests
+against a real Aurora DSQL cluster run on `main`, before a release deploys. Before you push:
+
+```bash
+(cd api && uv run pytest && uv run ruff check . && uv run ruff format --check .)
+(cd client && uv run pytest)
+(cd web && pnpm test && pnpm lint && pnpm typecheck)
+```
+
+- **API changes** regenerate the site's types (`cd web && pnpm openapi`): CI fails on a stale
+  `openapi.json`.
+- **Schema changes** are new numbered migrations in `api/src/arena/db/migrations/`, and only
+  expand: the live version keeps running on the new schema while a release migrates.
+- **Changes users see** get a line under "Unreleased" in [CHANGELOG.md](CHANGELOG.md).
+- Pull requests into `dev` can be squash-merged.
+
+## Cutting a release
+
+1. **On `dev`**, set the version:
+   - rename CHANGELOG.md's "Unreleased" section to `## [X.Y.Z] - YYYY-MM-DD` and start a new,
+     empty "Unreleased" above it;
+   - set the version in `api/pyproject.toml`, `api/src/arena/__init__.py`,
+     `client/pyproject.toml`, `client/src/jackdaw_arena/__init__.py` and `web/package.json`;
+   - refresh the lock files: `uv lock` in `api/` and in `client/`;
+   - check: `python scripts/check_version.py`.
+2. **Open a pull request from `dev` to `main`** named "Release X.Y.Z", and merge it with a merge
+   commit (not squash or rebase, so `main` and `dev` keep one history). The merge is the deploy:
+   CI runs on `main`, the DSQL tests included, then the Deploy workflow releases it (auditing the
+   season first when the jackdaw release changed).
+3. **Tag the merge commit** on `main` and push the tag:
+
+   ```bash
+   git switch main && git pull
+   git tag -a vX.Y.Z -m "Jackdaw Arena X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+   The Release workflow checks the tag against the version, builds the client's wheel and sdist,
+   and opens a draft GitHub release with them and the changelog section. Publish it from the
+   releases page.
+4. **Bring `dev` up to `main`:** `git switch dev && git merge --ff-only main && git push`.
+
+Versions follow [semantic versioning](https://semver.org). While the version is 0.x, a release
+that breaks something (the agent protocol, the client's API) bumps the minor version
+(0.1.0 → 0.2.0), and a release of fixes only bumps the patch version (0.1.0 → 0.1.1).
+
+A fix that can't wait for the next release goes on a `hotfix/<name>` branch from `main`, with the
+patch version bump and a changelog entry; open its pull request against `main` (merging it
+deploys), tag it as above, then merge `main` into `dev`. A fix to the docs or the workflows alone
+needs no version or tag.
+
 ## Layout
 
 ```
@@ -7,7 +82,8 @@ api/      the service: FastAPI, SQLAlchemy Core, psycopg 3, jackdaw; its Dockerf
 client/   the jackdaw-arena package: ArenaEnv, evaluate() and the CLI
 web/      the site: React, TypeScript, Vite, TanStack Query (API types generated from the OpenAPI)
 infra/    bootstrap/ (the Terraform state bucket), terraform/ (everything else), scripts/
-.github/  the CI, Deploy and Uptime workflows
+scripts/  check_version.py: the version is the same everywhere
+.github/  the CI, PR target, Deploy, Release and Uptime workflows
 ```
 
 The site runs on AWS:

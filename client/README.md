@@ -3,7 +3,7 @@
 The client for [Jackdaw Arena](https://arena.tylerflar.com): evaluate a Balatro agent on server-held seeds.
 
 ```bash
-uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena#subdirectory=client"
+uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena@main#subdirectory=client"
 ```
 
 Create an agent and a token on your Arena account page, then make the token available as `ARENA_TOKEN` or save it to `~/.jackdaw-arena/token`.

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import { useMe, useTracks } from "../api/hooks";
 
-const INSTALL = `uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena#subdirectory=client"`;
+const INSTALL = `uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena@main#subdirectory=client"`;
 
 const ENV = `from jackdaw_arena import ArenaEnv
 
