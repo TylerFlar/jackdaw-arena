@@ -23,9 +23,11 @@ dependencies = [
 [project.optional-dependencies]
 # Production on AWS: Aurora DSQL (IAM auth tokens) and SSM. Installed in the Lambda image.
 aws = [
-    "aurora-dsql-python-connector>=0.2",
+    # The psycopg extra brings psycopg-pool, which the connector imports unconditionally.
+    "aurora-dsql-python-connector[psycopg]>=0.2.7",
     "aurora-dsql-sqlalchemy>=1.3",
     "boto3>=1.40",
+    "certifi>=2025.1",
 ]
 
 [project.scripts]

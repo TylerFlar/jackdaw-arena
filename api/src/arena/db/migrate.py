@@ -84,6 +84,7 @@ def grant_app_role(engine: Engine, user: str, role_arn: str) -> None:
         if mapped.first() is None:
             arn = role_arn.replace("'", "''")
             conn.exec_driver_sql(f"AWS IAM GRANT {user} TO '{arn}'")
-        conn.exec_driver_sql(f"GRANT USAGE ON SCHEMA public TO {user}")
+        # No GRANT on schema public: DSQL refuses it ("system entity"), and every role may
+        # already use it. Table privileges are what matter.
         for table in TABLES:
             conn.exec_driver_sql(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO {user}")

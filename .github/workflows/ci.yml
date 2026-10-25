@@ -155,6 +155,11 @@ jobs:
           --build-arg BUILD=${{ github.sha }} --tag arena-api:ci api
       - name: The engine inside the image matches the local Gymnasium env
         run: docker run --rm --user root -v "$PWD/api:/api:ro" arena-api:ci sh /api/scripts/test-in-image.sh
+      - name: The DSQL code path imports and builds an engine
+        run: >-
+          docker run --rm --entrypoint python arena-api:ci -c
+          "from arena.db.engine import make_engine; from arena.settings import Settings;
+          make_engine(Settings(db='dsql', dsql_endpoint='example.dsql.us-west-2.on.aws'))"
       - name: The image serves, and reports its build
         run: |
           docker run -d --name api -p 8000:8000 arena-api:ci

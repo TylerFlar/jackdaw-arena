@@ -13,6 +13,7 @@ from arena.settings import Settings
 
 def make_engine(settings: Settings) -> Engine:
     if settings.db == "dsql":
+        import certifi
         from aurora_dsql_sqlalchemy import create_dsql_engine
 
         if not settings.dsql_endpoint:
@@ -23,6 +24,10 @@ def make_engine(settings: Settings) -> Engine:
             host=settings.dsql_endpoint,
             user="admin" if settings.role == "tasks" else settings.dsql_user,
             driver="psycopg",
+            # The connector's default ("system") is wherever psycopg-binary's bundled OpenSSL
+            # looks, which isn't the OS store on Windows, nor necessarily on Debian. certifi's
+            # Mozilla bundle includes the Amazon roots DSQL's certificates chain to.
+            sslrootcert=certifi.where(),
             application_name="jackdaw-arena",
             pool_size=1,
             max_overflow=2,

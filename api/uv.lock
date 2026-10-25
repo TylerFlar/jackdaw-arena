@@ -113,9 +113,10 @@ dependencies = [
 
 [package.optional-dependencies]
 aws = [
-    { name = "aurora-dsql-python-connector" },
+    { name = "aurora-dsql-python-connector", extra = ["psycopg"] },
     { name = "aurora-dsql-sqlalchemy" },
     { name = "boto3" },
+    { name = "certifi" },
 ]
 
 [package.dev-dependencies]
@@ -129,9 +130,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aurora-dsql-python-connector", marker = "extra == 'aws'", specifier = ">=0.2" },
+    { name = "aurora-dsql-python-connector", extras = ["psycopg"], marker = "extra == 'aws'", specifier = ">=0.2.7" },
     { name = "aurora-dsql-sqlalchemy", marker = "extra == 'aws'", specifier = ">=1.3" },
     { name = "boto3", marker = "extra == 'aws'", specifier = ">=1.40" },
+    { name = "certifi", marker = "extra == 'aws'", specifier = ">=2025.1" },
     { name = "fastapi", specifier = ">=0.120" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "itsdangerous", specifier = ">=2.2" },
@@ -225,6 +227,12 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ad/f3/d4cc8587a4dd11d61c7a499ee362764172136f196b5a4040f9a6284764d2/aurora_dsql_python_connector-0.2.7.tar.gz", hash = "sha256:45b9e31494ca554440ef11a6861903a82228bb2f19dfc8d0af760e4daf264a0a", size = 98142, upload-time = "2026-05-28T15:44:13.175Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a1/47/478e3f25da48c29531702709728e490be331bf24e54fd6a748188465e1ff/aurora_dsql_python_connector-0.2.7-py3-none-any.whl", hash = "sha256:2238e33ea40b26facf42bca4a7eff4ee2416a54650a2e9f84af549da3cafb0ea", size = 21714, upload-time = "2026-05-28T15:44:12.079Z" },
+]
+
+[package.optional-dependencies]
+psycopg = [
+    { name = "psycopg", extra = ["binary"] },
+    { name = "psycopg-pool" },
 ]
 
 [[package]]
@@ -1174,6 +1182,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/d2/18e9c779a5efd565250329adaf529ecc2b8b2ed5be5cb0f6ccee208cbfd9/psycopg_binary-3.3.6-cp314-cp314-musllinux_1_2_riscv64.whl", hash = "sha256:7308c93cf0b19bbaf8e6ff0a6ad50d3c442385739245fe15a8d593bf841734a6", size = 4019883, upload-time = "2026-09-18T13:21:21.587Z" },
     { url = "https://files.pythonhosted.org/packages/ef/28/0cc654afc6c2cda982767f5679d3646b30b1ec86545bdaa9402202d6776c/psycopg_binary-3.3.6-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:05a83ac9fd52b9bca7cb5ab04b3691163170bd16f53defa27216ea3aa07ee781", size = 4332607, upload-time = "2026-09-18T13:21:27.63Z" },
     { url = "https://files.pythonhosted.org/packages/f1/3e/0a753a74fbd7aef120f286c016e09d3cc3f1daf7688f4a145d27281260b2/psycopg_binary-3.3.6-cp314-cp314-win_amd64.whl", hash = "sha256:1fbd30e537dab22cafdf080608f10148fe2a5f3a61294ddb5113caac8a623840", size = 3755671, upload-time = "2026-09-18T13:21:33.855Z" },
+]
+
+[[package]]
+name = "psycopg-pool"
+version = "3.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/74/5e/c0664b968b102ff68b811d999c728546c48d5c1eec03e3bbaf88c0cb4472/psycopg_pool-3.3.3.tar.gz", hash = "sha256:df87b5d9d0ad7db37f6cdad4fa8ce113d250f5997f6db38e9a99192fb67f9e1d", size = 32006, upload-time = "2026-09-22T15:53:24.947Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5d/b4/452c6607a0f479465cd8a9b0d9956919fcb150050c1f83f9f11e6b8ee8dc/psycopg_pool-3.3.3-py3-none-any.whl", hash = "sha256:9b9cd6a4fcec47a410f7e82d408540e7f77b478509e91b44c1a5457a13e5ff37", size = 40304, upload-time = "2026-09-22T15:53:23.712Z" },
 ]
 
 [[package]]
