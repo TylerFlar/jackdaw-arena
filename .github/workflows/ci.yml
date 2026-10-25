@@ -18,7 +18,8 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16
+        # A service container is pulled before any step could log in to ECR Public.
+        image: mirror.gcr.io/library/postgres:16
         env:
           POSTGRES_USER: arena
           POSTGRES_PASSWORD: arena
@@ -144,10 +145,23 @@ jobs:
   image:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Anonymous pulls from ECR Public on GitHub's shared runners keep hitting its data limit;
+      # logged in, they count against our account's allowance. (Fork PRs get no OIDC token.)
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        if: vars.AWS_CI_PULL_ROLE_ARN != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          role-to-assume: ${{ vars.AWS_CI_PULL_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Log in to ECR Public
+        if: vars.AWS_CI_PULL_ROLE_ARN != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: Build the Lambda image
         run: >-
@@ -169,10 +183,23 @@ jobs:
   e2e:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # Anonymous pulls from ECR Public on GitHub's shared runners keep hitting its data limit;
+      # logged in, they count against our account's allowance. (Fork PRs get no OIDC token.)
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        if: vars.AWS_CI_PULL_ROLE_ARN != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          role-to-assume: ${{ vars.AWS_CI_PULL_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Log in to ECR Public
+        if: vars.AWS_CI_PULL_ROLE_ARN != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 10.33.0

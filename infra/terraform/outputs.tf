@@ -31,15 +31,16 @@ output "dsql_ci_endpoint" {
 output "github_variables" {
   description = "Repository variables the workflows read (Settings > Secrets and variables > Actions > Variables). None of them is secret."
   value = {
-    AWS_REGION          = var.region
-    AWS_DEPLOY_ROLE_ARN = aws_iam_role.deploy.arn
-    AWS_CI_ROLE_ARN     = aws_iam_role.ci.arn
-    ECR_REPOSITORY      = aws_ecr_repository.api.repository_url
-    API_FUNCTION        = aws_lambda_function.api.function_name
-    TASKS_FUNCTION      = aws_lambda_function.tasks.function_name
-    WEB_BUCKET          = aws_s3_bucket.web.bucket
-    DISTRIBUTION_ID     = aws_cloudfront_distribution.site.id
-    SITE_URL            = local.site_url
-    DSQL_CI_ENDPOINT    = local.dsql_ci_endpoint
+    AWS_REGION           = var.region
+    AWS_DEPLOY_ROLE_ARN  = aws_iam_role.deploy.arn
+    AWS_CI_ROLE_ARN      = aws_iam_role.ci.arn
+    AWS_CI_PULL_ROLE_ARN = aws_iam_role.ci_pull.arn
+    ECR_REPOSITORY       = aws_ecr_repository.api.repository_url
+    API_FUNCTION         = aws_lambda_function.api.function_name
+    TASKS_FUNCTION       = aws_lambda_function.tasks.function_name
+    WEB_BUCKET           = aws_s3_bucket.web.bucket
+    DISTRIBUTION_ID      = aws_cloudfront_distribution.site.id
+    SITE_URL             = local.site_url
+    DSQL_CI_ENDPOINT     = local.dsql_ci_endpoint
   }
 }
