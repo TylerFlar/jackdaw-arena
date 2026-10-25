@@ -25,7 +25,7 @@ from arena.clock import Clock
 from arena.db import repo
 from arena.db.engine import is_serialization_failure
 from arena.engine.live import CorruptTrace, EnvFactory, LiveEpisode, Outcome, StepResult, gym_env
-from arena.engine.spec import ENGINE_VERSION, reward_weights
+from arena.engine.spec import ENGINE_VERSION, SEASON, reward_weights
 from arena.services.seeds import SeedSource
 
 
@@ -95,7 +95,7 @@ class EpisodeService:
         env_factory: EnvFactory = gym_env,
         cache_size: int = 512,
         limits: Limits | None = None,
-        season: str = ENGINE_VERSION,
+        season: str = SEASON,
     ) -> None:
         self.engine, self.clock, self.seeds = engine, clock, seeds
         self.env_factory, self.cache_size, self.limits, self.season = (
@@ -134,7 +134,7 @@ class EpisodeService:
     def _rebuild(self, row: repo.EpisodeRow) -> LiveEpisode:
         if row.season != self.season:
             raise ProtocolError(
-                409, "stale_season", f"episode {row.id} is from engine {row.season}"
+                409, "stale_season", f"episode {row.id} is from season {row.season}"
             )
         try:
             return LiveEpisode.rebuild(row.spec, row.indices, self.env_factory)
@@ -230,6 +230,7 @@ class EpisodeService:
                             fresh.append({
                                 "id": uuid.uuid4(), "agent_id": agent.id, "track": track.key,
                                 "client_key": k, "season": self.season,
+                                "engine_version": ENGINE_VERSION,
                                 "action_version": ACTION_VERSION, "seed": seed,
                                 "rng_seed": rng_seed, "back": track.back, "stake": track.stake,
                                 "max_steps": track.max_steps, "end_on_win": track.end_on_win,

@@ -8,7 +8,9 @@ import pytest
 from sqlalchemy import text
 
 from arena.db.migrate import _INDEX, migrate, migrations, statements
+from arena.engine.spec import ENGINE_VERSION
 from arena.house import run_house
+from arena.services.seeds import FixedSeeds
 
 
 def test_house_baselines_play_verified_episodes(app):
@@ -29,12 +31,13 @@ def test_house_agents_appear_in_their_own_section(client):
 
 
 @pytest.mark.slow
-def test_smart_baseline_reproduces_the_repo_evaluation(app):
-    """jackdaw's examples/results/eval_results.json: smart_agent beats 5.379 +- 0.127 blinds on
-    1,000 Red Deck episodes. 500 arena episodes on fresh seeds should land within ~3 SEM."""
-    s = run_house(app.state.episodes, "smart", episodes=500, batch=50)
-    combined = (s["blinds_beaten_sem"] ** 2 + 0.127**2) ** 0.5
-    assert abs(s["blinds_beaten"] - 5.379) < 3 * combined, s
+def test_smart_baseline_reproduces_the_repo_evaluation(make_app):
+    """The runs of jackdaw's examples/evaluate_agents.py, played through the arena: Gym seed s is
+    run seed str(s) with sampler seed s. Its smart agent beats 5.404 blinds on average over
+    10000000-10000499, the first half of the 1,000 runs in examples/results/eval_results.json."""
+    seeds = FixedSeeds((str(s), s) for s in range(10_000_000, 10_000_500))
+    s = run_house(make_app(seeds=seeds).state.episodes, "smart", episodes=500, batch=50)
+    assert s["blinds_beaten"] == pytest.approx(5.404) and s["length"] == pytest.approx(50.27), s
     assert s["verified"]
 
 
@@ -55,7 +58,8 @@ def test_events_run_tasks_and_refuse_http_callers(client, make_app, settings):
 
     with TestClient(api) as c:
         assert c.post("/events", json={"task": "warm"}).status_code == 200
-        assert c.post("/events", json={"task": "health"}).json() == {"ok": True, "build": "dev"}
+        health = c.post("/events", json={"task": "health"}).json()
+        assert health == {"ok": True, "build": "dev", "engine": ENGINE_VERSION}
         assert c.post("/events", json={"task": "migrate"}).status_code == 403
     assert client.post("/events", json={"task": "nope"}).status_code == 400
 
@@ -75,3 +79,18 @@ def test_migration_statements_split_and_index_rewrite():
     rewritten = _INDEX.sub(lambda m: f"CREATE {m.group(1) or ''}INDEX ASYNC ", index, count=1)
     assert rewritten.startswith("CREATE INDEX ASYNC IF NOT EXISTS")
     assert _INDEX.match("CREATE INDEX ASYNC x ON t (c)") is None
+
+
+def test_audit_replays_the_season_and_catches_a_wrong_record(client, engine):
+    from arena.engine.spec import ENGINE_VERSION, SEASON
+
+    run_house(client.app.state.episodes, "random", episodes=6)
+    r = client.post("/events", json={"task": "audit"}).json()
+    assert r == {"ok": True, "season": SEASON, "engine": ENGINE_VERSION, "checked": 6,
+                 "failed": 0, "examples": []}  # fmt: skip
+    with engine.begin() as conn:
+        eid = conn.execute(text("SELECT id FROM episodes ORDER BY id LIMIT 1")).scalar_one()
+        conn.execute(text("UPDATE episodes SET final_state_hash = 'x' WHERE id = :i"), {"i": eid})
+    r = client.post("/events", json={"task": "audit"}).json()
+    assert r["ok"] is False and r["failed"] == 1
+    assert r["examples"] == [f"{eid}: a different final state"]

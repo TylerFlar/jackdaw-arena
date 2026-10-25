@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import base64
 import sys
-from dataclasses import fields
+from dataclasses import dataclass, fields
 from typing import Any
 
 from jackdaw import _core
@@ -21,6 +21,38 @@ if sys.byteorder != "little":  # pragma: no cover - every supported platform is 
     raise ImportError("Jackdaw Arena serves little-endian float32 observations")
 
 ENGINE_VERSION: str = _core.__version__
+
+
+@dataclass(frozen=True)
+class Season:
+    """Results that compare with each other: the jackdaw releases that play the same game.
+
+    A release joins a season when every ended episode of the season replays with it to the
+    recorded final state. Deploys check this with the audit task when the engine changes."""
+
+    key: str  # stored on every episode
+    label: str
+    engines: tuple[str, ...]
+
+
+SEASONS: dict[str, Season] = {
+    "0.2.0": Season("0.2.0", "Season 1", ("0.2.0", "0.2.1")),
+}
+SEASON: str = "0.2.0"
+
+if ENGINE_VERSION not in SEASONS[SEASON].engines:
+    raise ImportError(
+        f"jackdaw {ENGINE_VERSION} isn't one of season {SEASON}'s releases "
+        f"{SEASONS[SEASON].engines}. A release that plays the same game joins it in "
+        "arena.engine.spec.SEASONS; one that changes the game starts a new season."
+    )
+
+
+def replayable(season: str) -> bool:
+    """Whether the running engine replays this season's episodes exactly."""
+    return season in SEASONS and ENGINE_VERSION in SEASONS[season].engines
+
+
 OBS_LEN: int = _core.GYM_OBS_LEN
 MAX_ACTIONS: int = _core.MAX_ACTIONS
 OBS_DTYPE = "<f4"

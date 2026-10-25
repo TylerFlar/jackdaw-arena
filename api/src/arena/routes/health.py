@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from arena import __version__
-from arena.engine.spec import ENGINE_VERSION
+from arena.engine.spec import ENGINE_VERSION, SEASON
 
 router = APIRouter(tags=["health"])
 
@@ -33,5 +33,6 @@ def version(request: Request) -> dict[str, str]:
     return {
         "arena": __version__,
         "engine": ENGINE_VERSION,
+        "season": SEASON,
         "build": request.app.state.settings.build,
     }

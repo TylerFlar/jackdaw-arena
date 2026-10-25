@@ -163,7 +163,7 @@ def sign_in(engine: Engine, clock: FakeClock, settings: Settings):
 @pytest.fixture
 def ended(engine: Engine, clock: FakeClock):
     """Insert an ended episode with a chosen outcome (for statistics tests)."""
-    from arena.engine.spec import ENGINE_VERSION
+    from arena.engine.spec import SEASON
 
     def add(agent: repo.Agent, rounds: int, ante: int = 1, won: bool = False,
             reason: str = "lost", track: str = "red-1", t: int = 10,
@@ -181,7 +181,7 @@ def ended(engine: Engine, clock: FakeClock):
                     " :won, :ante, :rounds, '[]', 'x', :verified)"
                 ),
                 {"id": eid, "a": agent.id, "track": track, "key": uuid.uuid4(),
-                 "season": ENGINE_VERSION, "seed": uuid.uuid4().hex[:16], "t": t,
+                 "season": SEASON, "seed": uuid.uuid4().hex[:16], "t": t,
                  "trace": b"\0\0" * t, "now": clock(), "reason": reason, "won": won,
                  "ante": ante, "rounds": rounds, "verified": verified},
             )  # fmt: skip

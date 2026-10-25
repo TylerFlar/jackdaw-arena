@@ -17,7 +17,7 @@ from arena import schemas
 from arena.auth.deps import UserDep, csrf_protect
 from arena.auth.tokens import digest, display_prefix, new_token
 from arena.db import repo
-from arena.engine.spec import ENGINE_VERSION
+from arena.engine.spec import SEASON
 from arena.routes.auth import user_json
 from arena.routes.public import (
     agent_document,
@@ -67,7 +67,7 @@ def _agent_json(conn: Any, a: repo.Agent) -> dict[str, Any]:
         "unlisted": a.unlisted,
         "hidden": a.hidden,
         "tokens": repo.tokens_of(conn, a.id),
-        "used": {t: n for (t, s), n in used.items() if s == ENGINE_VERSION},
+        "used": {t: n for (t, s), n in used.items() if s == SEASON},
     }
 
 

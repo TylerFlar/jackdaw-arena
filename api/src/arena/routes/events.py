@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from arena.db.migrate import grant_app_role, migrate
+from arena.engine.spec import ENGINE_VERSION, SEASON
 
 router = APIRouter(include_in_schema=False)
 log = logging.getLogger("arena.events")
@@ -51,7 +52,7 @@ def events(event: Event, request: Request) -> dict[str, Any]:
         # A deploy invokes a newly published version with this before moving traffic to it.
         with state.engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return {"ok": True, "build": settings.build}
+        return {"ok": True, "build": settings.build, "engine": ENGINE_VERSION}
     if settings.role == "api":
         raise HTTPException(403, f"the api function doesn't run {event.task!r}")
     params = event.model_extra or {}
@@ -60,7 +61,11 @@ def events(event: Event, request: Request) -> dict[str, Any]:
         applied = migrate(state.engine, dsql=settings.db == "dsql")
         if settings.db == "dsql" and settings.dsql_app_role_arn:
             grant_app_role(state.engine, settings.dsql_user, settings.dsql_app_role_arn)
-        return {"ok": True, "applied": applied}
+        return {"ok": True, "applied": applied, "engine": ENGINE_VERSION}
+    if event.task == "audit":
+        from arena.services.audit import audit
+
+        return audit(state.engine, str(params.get("season", SEASON)))
     if event.task == "janitor":
         return {"ok": True, "ended": state.episodes.janitor(settings.idle_timeout_s)}
     if event.task == "house":

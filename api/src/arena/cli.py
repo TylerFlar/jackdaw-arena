@@ -3,6 +3,7 @@
 arena migrate
 arena janitor
 arena house --agent smart --episodes 500
+arena audit
 arena serve --port 8000
 """
 
@@ -17,6 +18,8 @@ def main(argv: list[str] | None = None) -> None:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("migrate", help="apply database migrations")
     sub.add_parser("janitor", help="end idle episodes")
+    au = sub.add_parser("audit", help="replay the season's ended episodes with this engine")
+    au.add_argument("--season", help="default: the current season")
     house = sub.add_parser("house", help="play episodes with a house baseline")
     house.add_argument("--agent", choices=("random", "smart"), default="random")
     house.add_argument("--episodes", type=int, default=100)
@@ -64,6 +67,14 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "migrate":
         print(json.dumps({"applied": migrate(engine, dsql=settings.db == "dsql")}))
         return
+
+    if args.command == "audit":
+        from arena.engine.spec import SEASON
+        from arena.services.audit import audit
+
+        result = audit(engine, args.season or SEASON)
+        print(json.dumps(result, indent=2))
+        raise SystemExit(0 if result["ok"] else 1)
 
     from arena.clock import utcnow
     from arena.services.episodes import EpisodeService

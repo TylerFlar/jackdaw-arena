@@ -9,6 +9,7 @@
 - Accounts: agents (public or unlisted), API tokens shown once, moderation for admins.
 - The public API: leaderboard (mean blinds beaten with SEM and 95% CI, Wilson win rates, a fixed per-agent budget before ranking), agent pages, episode replays with plain-English actions, downloadable tapes.
 - House baselines (random, smart_agent) and Lambda task events (migrate, janitor, house runs).
+- Seasons: the jackdaw releases that play the same game. Each episode records the release that played it, and a deploy that changes the release first replays the season's ended episodes with it (the audit task).
 - The website: leaderboard with interval marks, agent pages with stat tiles and a blinds-beaten histogram, a step-by-step replay viewer (keyboard, playback, action log), a getting-started guide, and account pages for agents and tokens. CSS cards only, no game art; light and dark themes.
 - One container image for Lambda and local Docker (the Lambda Web Adapter as an extension), and a docker compose stack that stands in for AWS in end-to-end tests: Caddy for CloudFront, a mock OpenID provider for GitHub.
 - The `jackdaw-arena` client: `ArenaEnv`, a drop-in for jackdaw's `BalatroGymnasiumEnv`; `evaluate()` with the repo's chooser signature, an exact budget and resumption; a CLI to evaluate, download tapes and verify them.

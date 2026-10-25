@@ -1,5 +1,5 @@
 """Against a real Aurora DSQL cluster: the migrations, the least-privilege app role, a whole
-episode through the API, and a step race between two processes.
+episode through the API and its audit, and a step race between two processes.
 
 CI runs these on main against the arena-ci scratch cluster. Locally::
 
@@ -25,7 +25,9 @@ from sqlalchemy import Engine, text
 from arena.clock import FakeClock
 from arena.db.engine import make_engine
 from arena.db.migrate import TABLES, grant_app_role, migrate
+from arena.engine.spec import ENGINE_VERSION, SEASON
 from arena.main import create_app
+from arena.services.audit import audit
 from arena.settings import Settings
 from tests.conftest import Agents, bearer
 
@@ -116,6 +118,10 @@ def test_an_episode_from_start_to_replay(app_engine):
         assert [row["agent"]["slug"] for row in board["provisional"]] == [agent.slug]
         frames = c.get(f"/api/episodes/{ep['id']}/frames").json()
         assert frames["total"] == res["final"]["length"] + 1
+        tape = c.get(f"/api/episodes/{ep['id']}/tape").json()
+        assert tape["engine_version"] == ENGINE_VERSION
+    result = audit(app_engine, SEASON)
+    assert result["ok"] and result["checked"] == 1, result
 
 
 def test_two_processes_racing_on_one_step(app_engine):

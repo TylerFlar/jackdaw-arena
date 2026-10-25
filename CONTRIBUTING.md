@@ -62,10 +62,34 @@ Terraform creates the resources, and `infra/scripts/deploy.py` releases code int
    - set `api_image_uri`, then run `terraform apply`
 
    CloudFront takes 5–15 minutes. If you set `alert_email`, confirm the two SNS emails.
-5. **Release:** `uv run infra/scripts/deploy.py`. It migrates the database, publishes a version and health-checks it, then moves the `live` alias. It uploads the site and smoke-tests it, moving the alias back if anything fails. `--rollback` moves it back by hand.
+5. **Release:** `uv run infra/scripts/deploy.py`. It migrates the database, audits the season when the jackdaw release changes (see [Upgrading jackdaw](#upgrading-jackdaw)), publishes a version and health-checks it, then moves the `live` alias. It uploads the site and smoke-tests it, moving the alias back if anything fails. `--rollback` moves it back by hand.
 6. **CI/CD:**
    - Set the `github_variables` output as repository variables.
    - Create a `production` environment limited to `main`.
-   - Run the house baselines: `aws lambda invoke --function-name arena-tasks --payload '{"task":"house","agent":"smart","episodes":500}'`.
+   - Run the house baselines, `random` and `smart`:
+
+     ```bash
+     aws lambda invoke --function-name arena-tasks --cli-binary-format raw-in-base64-out \
+       --cli-read-timeout 900 --payload '{"task":"house","agent":"smart","episodes":500}' house.json
+     ```
 
 Function settings changed in Terraform (memory, environment) take effect at the next release, when a new version is published.
+
+## Upgrading jackdaw
+
+The API pins one jackdaw release in `api/pyproject.toml`: the version, and the release's five wheel URLs. Each episode records the release that played it, and belongs to a season: the releases that play the same game, listed in `api/src/arena/engine/spec.py`. The API won't start on a release its season doesn't list.
+
+**A release that keeps the rules**, so that a seed plays the same run (jackdaw's changelog says so):
+
+1. Add it to the current season's `engines`.
+2. Update the pin and the wheel URLs, then run `uv lock`.
+3. Release as usual. When the release changes, the deploy replays every ended episode of the season with it before it takes traffic, and stops if any of them ends in a different state.
+
+The audit also runs by hand:
+
+```bash
+aws lambda invoke --function-name arena-tasks --cli-binary-format raw-in-base64-out \
+  --cli-read-timeout 900 --payload '{"task":"audit"}' audit.json
+```
+
+**A release that changes the rules:** add a `Season` with a new key, and point `SEASON` at it. The new season's leaderboard starts empty, and every agent gets a fresh budget. The new release can't replay the old season's episodes, so the site stops showing those replays; their tapes can still be downloaded.

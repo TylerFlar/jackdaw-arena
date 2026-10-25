@@ -337,6 +337,7 @@ class EpisodeRow:
     final_state_hash: str | None
     verified: bool | None
     engine_error: str | None
+    engine_version: str | None  # the jackdaw release that recorded it (null: the season's first)
 
     @property
     def spec(self) -> RunSpec:
@@ -356,7 +357,7 @@ _EP_COLS = (
     "id, agent_id, track, client_key, season, action_version, seed, rng_seed, back, stake, "
     "max_steps, end_on_win, max_free_moves, reward_kind, reward_weights, status, t, trace, "
     "created_at, last_step_at, ended_at, end_reason, won, ante_reached, rounds_beaten, refused, "
-    "not_ported, attempted, tape, final_state_hash, verified, engine_error"
+    "not_ported, attempted, tape, final_state_hash, verified, engine_error, engine_version"
 )
 
 
@@ -426,12 +427,12 @@ def quota_used(conn: Connection, agent_id: uuid.UUID) -> dict[tuple[str, str], i
 def insert_episodes(conn: Connection, rows: Iterable[dict[str, Any]]) -> None:
     conn.execute(
         text(
-            "INSERT INTO episodes (id, agent_id, track, client_key, season, action_version, seed, "
-            "rng_seed, back, stake, max_steps, end_on_win, max_free_moves, reward_kind, "
-            "reward_weights, status, t, trace, created_at, last_step_at) VALUES (:id, :agent_id, "
-            ":track, :client_key, :season, :action_version, :seed, :rng_seed, :back, :stake, "
-            ":max_steps, :end_on_win, :max_free_moves, :reward_kind, "
-            "CAST(:reward_weights AS jsonb), 'running', 0, :trace, :now, :now)"
+            "INSERT INTO episodes (id, agent_id, track, client_key, season, engine_version, "
+            "action_version, seed, rng_seed, back, stake, max_steps, end_on_win, max_free_moves, "
+            "reward_kind, reward_weights, status, t, trace, created_at, last_step_at) VALUES "
+            "(:id, :agent_id, :track, :client_key, :season, :engine_version, :action_version, "
+            ":seed, :rng_seed, :back, :stake, :max_steps, :end_on_win, :max_free_moves, "
+            ":reward_kind, CAST(:reward_weights AS jsonb), 'running', 0, :trace, :now, :now)"
         ),
         [
             {**r, "reward_weights": json.dumps(r["reward_weights"])
@@ -518,6 +519,21 @@ def idle_running(conn: Connection, before: datetime, limit: int = 100) -> list[E
         {"before": before, "limit": limit},
     )
     return [_episode(r) for r in rows]
+
+
+def verified_episodes(
+    conn: Connection, season: str, after: uuid.UUID | None, limit: int
+) -> list[EpisodeRow]:
+    """A page of the season's verified ended episodes, in id order after ``after``."""
+    sql = (
+        f"SELECT {_EP_COLS} FROM episodes WHERE season = :s AND status = 'ended' AND verified "
+        "AND final_state_hash IS NOT NULL"
+    )
+    params: dict[str, Any] = {"s": season, "n": limit}
+    if after is not None:
+        sql += " AND id > :after"
+        params["after"] = after
+    return [_episode(r) for r in conn.execute(text(sql + " ORDER BY id LIMIT :n"), params)]
 
 
 def get_episode(conn: Connection, episode_id: uuid.UUID) -> EpisodeRow | None:

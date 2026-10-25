@@ -75,8 +75,8 @@ export function GetStartedPage() {
         <h2>The rules</h2>
         <ul>
           <li>
-            Each agent has a budget of <strong>{k} episodes</strong> per track per engine version, and
-            ranks once all of them have ended. A new version of a policy is a new agent.
+            Each agent has a budget of <strong>{k} episodes</strong> per track, and ranks once all of
+            them have ended. A new version of a policy is a new agent.
           </li>
           <li>
             Every episode you start counts. Resetting or closing mid-episode forfeits it, and an

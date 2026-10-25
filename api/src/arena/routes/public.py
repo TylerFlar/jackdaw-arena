@@ -14,7 +14,7 @@ from arena import schemas
 from arena.db import repo
 from arena.engine.catalog import catalog
 from arena.engine.frames import frames
-from arena.engine.spec import ENGINE_VERSION
+from arena.engine.spec import ENGINE_VERSION, SEASON, replayable
 from arena.services.episodes import final_of
 from arena.services.leaderboard import agent_summary, agent_tracks, leaderboard
 
@@ -44,7 +44,9 @@ def episode_summary(row: repo.EpisodeRow, slug: str) -> dict[str, Any]:
 def tape_document(row: repo.EpisodeRow) -> dict[str, Any]:
     """Everything needed to re-verify an ended episode with jackdaw alone."""
     return {
-        "format": "jackdaw-arena.tape/1", "id": str(row.id), "engine_version": row.season,
+        "format": "jackdaw-arena.tape/1", "id": str(row.id),
+        # Rows from before the column was added were recorded with their season's first release.
+        "engine_version": row.engine_version or row.season,
         "action_version": row.action_version, "track": row.track, "back": row.back,
         "stake": row.stake, "seed": row.seed, "rng_seed": str(row.rng_seed),
         "max_steps": row.max_steps, "end_on_win": row.end_on_win,
@@ -56,8 +58,8 @@ def tape_document(row: repo.EpisodeRow) -> dict[str, Any]:
 
 
 async def frames_document(row: repo.EpisodeRow, start: int, limit: int) -> dict[str, Any]:
-    if row.season != ENGINE_VERSION:
-        raise HTTPException(409, f"replays of engine {row.season} episodes aren't served yet")
+    if not replayable(row.season):
+        raise HTTPException(409, f"replays of season {row.season} episodes aren't served yet")
     tape = row.tape or []
     # Replaying is CPU work: keep it off the event loop.
     out = await anyio.to_thread.run_sync(frames, row.spec, tape, start, limit)
@@ -74,7 +76,7 @@ def tracks(request: Request, response: Response) -> list[dict[str, Any]]:
 
 @router.get("/leaderboard", response_model=schemas.Leaderboard)
 def get_leaderboard(
-    request: Request, response: Response, track: str = "red-1", season: str = ENGINE_VERSION
+    request: Request, response: Response, track: str = "red-1", season: str = SEASON
 ) -> dict[str, Any]:
     with request.app.state.engine.connect() as conn:
         t = repo.get_track(conn, track)
@@ -98,11 +100,11 @@ def agent_page(request: Request, response: Response, slug: str) -> dict[str, Any
 
 
 def agent_document(conn: Any, agent: repo.Agent) -> dict[str, Any]:
-    stats, hist = agent_tracks(conn, agent.id, repo.list_tracks(conn), ENGINE_VERSION)
+    stats, hist = agent_tracks(conn, agent.id, repo.list_tracks(conn), SEASON)
     recent = repo.ended_episodes_of(conn, agent.id, None, None, 10)
     return {
         "agent": agent_summary(agent),
-        "season": ENGINE_VERSION,
+        "season": SEASON,
         "tracks": stats,
         "histogram": hist,
         "recent": [episode_summary(r, agent.slug) for r in recent],

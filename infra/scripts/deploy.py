@@ -13,7 +13,9 @@ Every step is safe to rerun, and nothing visitors see changes until step 5:
             already has that tag)
   2. web    pnpm build
   3. tasks  point arena-tasks at the image and run the migrations (expand/contract: the live
-            version keeps working with the new schema)
+            version keeps working with the new schema). When the jackdaw release changes,
+            replay the season's ended episodes with it (the audit): if any ends differently,
+            arena-tasks goes back to its previous image and the release stops
   4. api    point arena-api at the image, publish a version, health-check that version against
             the database
   5. live   move the "live" alias (behind the Function URL) to the new version
@@ -184,12 +186,27 @@ def build_web() -> Path:
 
 
 def release_api(aws: Aws, cfg: dict[str, str], image_uri: str, sha: str) -> tuple[str, str]:
-    """Migrate, publish and health-check; return (new version, previous live version)."""
-    aws.update_code(cfg["TASKS_FUNCTION"], image_uri)
-    applied = aws.invoke(cfg["TASKS_FUNCTION"], {"task": "migrate"})["applied"]
-    log(f"migrations applied: {applied or 'none pending'}")
+    """Migrate, audit, publish and health-check; return (new version, previous live version)."""
+    api, tasks = cfg["API_FUNCTION"], cfg["TASKS_FUNCTION"]
+    try:
+        live_engine = aws.invoke(api, {"task": "health"}, qualifier=ALIAS).get("engine")
+    except DeployError:
+        live_engine = None  # an unhealthy live version: audit, and still allow the fix out
+    previous_image = aws.lam.get_function(FunctionName=tasks)["Code"]["ImageUri"]
+    aws.update_code(tasks, image_uri)
+    migrated = aws.invoke(tasks, {"task": "migrate"})
+    log(f"migrations applied: {migrated['applied'] or 'none pending'}")
+    if migrated.get("engine") != live_engine:
+        log(f"jackdaw {live_engine or '(unknown)'} -> {migrated.get('engine')}: auditing")
+        try:
+            result = aws.invoke(tasks, {"task": "audit"})
+        except DeployError:
+            log("audit failed: putting the tasks function back on its previous image")
+            aws.update_code(tasks, previous_image)
+            raise
+        log(f"audit passed: all {result['checked']} ended episodes of season "
+            f"{result['season']} replay to their recorded final state")  # fmt: skip
 
-    api = cfg["API_FUNCTION"]
     aws.update_code(api, image_uri)
     version = aws.lam.publish_version(FunctionName=api, Description=sha)["Version"]
     aws.lam.get_waiter("published_version_active").wait(FunctionName=api, Qualifier=version)

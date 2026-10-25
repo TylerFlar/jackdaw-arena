@@ -159,3 +159,18 @@ def test_catalog_and_tracks(client):
     assert cat["blinds"]["bl_hook"]["name"] == "The Hook"
     tracks = client.get("/api/tracks").json()
     assert tracks[0]["key"] == "red-1" and tracks[0]["episodes_per_agent"] == 500
+
+
+def test_tapes_name_the_release_that_recorded_them(client, engine):
+    from arena.engine.spec import ENGINE_VERSION, SEASON, SEASONS, replayable
+    from arena.house import run_house
+
+    assert ENGINE_VERSION in SEASONS[SEASON].engines and replayable(SEASON)
+    assert not replayable("9.9.9")
+    run_house(client.app.state.episodes, "random", episodes=1)
+    with engine.connect() as conn:
+        eid = conn.execute(text("SELECT id FROM episodes")).scalar_one()
+    assert client.get(f"/api/episodes/{eid}/tape").json()["engine_version"] == ENGINE_VERSION
+    with engine.begin() as conn:  # a row from before the column: its season's first release
+        conn.execute(text("UPDATE episodes SET engine_version = NULL"))
+    assert client.get(f"/api/episodes/{eid}/tape").json()["engine_version"] == SEASON

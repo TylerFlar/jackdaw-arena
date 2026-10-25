@@ -10,8 +10,8 @@ dependencies = [
     "fastapi>=0.120",
     "httpx>=0.28",
     "itsdangerous>=2.2",
-    # The engine. A benchmark pins one release: its outcomes define the season.
-    "jackdaw==0.2.0",
+    # The engine. arena/engine/spec.py lists the releases each season accepts.
+    "jackdaw==0.2.1",
     "joserfc>=1.2",
     "numpy>=2.0",
     "psycopg[binary]>=3.2",
@@ -65,11 +65,11 @@ environments = [
 jackdaw-arena = { path = "../client", editable = true }
 # jackdaw isn't on PyPI: install the release's prebuilt abi3 wheels (no Rust toolchain needed).
 jackdaw = [
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-manylinux_2_28_x86_64.whl", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-manylinux_2_28_aarch64.whl", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-win_amd64.whl", marker = "sys_platform == 'win32'" },
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-macosx_11_0_arm64.whl", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'" },
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.0/jackdaw-0.2.0-cp312-abi3-macosx_10_12_x86_64.whl", marker = "sys_platform == 'darwin' and platform_machine == 'x86_64'" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.1/jackdaw-0.2.1-cp312-abi3-manylinux_2_28_x86_64.whl", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.1/jackdaw-0.2.1-cp312-abi3-manylinux_2_28_aarch64.whl", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.1/jackdaw-0.2.1-cp312-abi3-win_amd64.whl", marker = "sys_platform == 'win32'" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.1/jackdaw-0.2.1-cp312-abi3-macosx_11_0_arm64.whl", marker = "sys_platform == 'darwin' and platform_machine == 'arm64'" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.2.1/jackdaw-0.2.1-cp312-abi3-macosx_10_12_x86_64.whl", marker = "sys_platform == 'darwin' and platform_machine == 'x86_64'" },
 ]
 
 [tool.pytest.ini_options]
