@@ -3254,7 +3254,7 @@
  "info": {
   "description": "Hosted, verifiable evaluation for Balatro agents on the jackdaw engine.",
   "title": "Jackdaw Arena",
-  "version": "0.1.0"
+  "version": "0.1.1"
  },
  "openapi": "3.1.0",
  "paths": {

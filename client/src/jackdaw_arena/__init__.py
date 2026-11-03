@@ -12,7 +12,7 @@ from jackdaw_arena.env import ArenaEnv
 from jackdaw_arena.evaluate import EpisodeResult, Evaluation, evaluate, random_chooser
 from jackdaw_arena.spec import Spec
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "ArenaClient",

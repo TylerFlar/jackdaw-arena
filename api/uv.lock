@@ -49,7 +49,7 @@ wheels = [
 
 [[package]]
 name = "arena-api"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
@@ -546,7 +546,7 @@ requires-dist = [
 
 [[package]]
 name = "jackdaw-arena"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "../client" }
 dependencies = [
     { name = "gymnasium" },
