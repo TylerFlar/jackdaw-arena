@@ -6,6 +6,9 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+### Changed
+- The engine is jackdaw 0.2.3: the same game as 0.2.2, only faster. It joins season 1, whose ended episodes all replay with it to their recorded final states, so the leaderboard and the budgets carry on; new episodes record 0.2.3 as their release.
+
 ## [0.1.0] - 2026-10-25
 
 The first release: the site at [arena.tylerflar.com](https://arena.tylerflar.com), its API, and
