@@ -4,10 +4,25 @@ each action did, checked against the frames around it."""
 from __future__ import annotations
 
 import math
+from collections.abc import Iterator
 
+import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from arena.house import run_house
+from arena.services.seeds import FixedSeeds
+
+# A red-1 run the smart agent plays for 25 steps, beating three blinds (the house's episode
+# 3a2bae90 of season 1). On a random seed it loses its first blind about one time in fifteen,
+# and then there is no cash out to check.
+SEED = ("SA66WT21DYU5QXIM", 5360536245564066246)
+
+
+@pytest.fixture
+def client(make_app) -> Iterator[TestClient]:
+    with TestClient(make_app(seeds=FixedSeeds([SEED]))) as c:
+        yield c
 
 
 def _same(a, b) -> bool:
