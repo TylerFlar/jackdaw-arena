@@ -1,6 +1,6 @@
 [project]
 name = "arena-api"
-version = "0.1.1"
+version = "0.1.2"
 description = "Jackdaw Arena: hosted, verifiable evaluation for Balatro agents"
 readme = "README.md"
 requires-python = ">=3.13,<3.15"
