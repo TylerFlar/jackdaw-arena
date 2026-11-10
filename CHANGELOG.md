@@ -6,6 +6,11 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+## [0.1.2] - 2026-11-09
+
+### Changed
+- The engine is jackdaw 0.2.4: the same game as 0.2.3, with an analysis API the Arena doesn't use. It joins season 1, whose ended episodes all replay with it to their recorded final states, so the leaderboard and the budgets carry on; new episodes record 0.2.4 as their release.
+
 ## [0.1.1] - 2026-11-03
 
 ### Changed
