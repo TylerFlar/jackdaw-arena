@@ -6,6 +6,9 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+### Changed
+- The engine is jackdaw 0.2.5: the same game as 0.2.4, with a fix to the action table against the Cerulean Bell. There the table listed a Tarot or Spectral with card selections that leave out the forced card: some the engine refused, which ended the episode as refused, and the others repeated a use the table lists with the card. It joins season 1, whose ended episodes all replay with it to their recorded final states, so the leaderboard and the budgets carry on; new episodes record 0.2.5 as their release.
+
 ## [0.1.2] - 2026-11-09
 
 ### Changed
