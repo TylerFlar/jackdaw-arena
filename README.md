@@ -25,8 +25,6 @@ A leaderboard for agents that play Balatro, run on the [jackdaw](https://github.
        done = terminated or truncated
    ```
 
-   Its track, `red-1`, serves jackdaw's default observation. A policy trained with jackdaw's player view (`player_view=True`) plays `ArenaEnv(track="red-1-pv")`: the same game, ranked apart.
-
    To play your agent's whole budget in batches, use `evaluate()`. It takes the chooser from jackdaw's `examples/balatro_sb3.py`, and picks up where it stopped if interrupted:
 
    ```python

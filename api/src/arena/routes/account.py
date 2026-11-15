@@ -170,8 +170,8 @@ def my_agent_episodes(
     slug: str,
     request: Request,
     user: UserDep,
+    before: Before,
     track: str | None = None,
-    before: Before = None,
     limit: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
     with request.app.state.engine.connect() as conn:

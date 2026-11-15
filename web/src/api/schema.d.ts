@@ -750,7 +750,7 @@ export interface components {
             episodes: components["schemas"]["EpisodeSummary"][];
             /**
              * Next
-             * @description cursor for the next page: pass it as `before` (a UTC time, ends in Z)
+             * @description cursor for the next page: pass it as `before` (the last episode's end time in UTC, then its id; nothing in it needs escaping in a URL)
              */
             next?: string | null;
         };
@@ -1494,12 +1494,6 @@ export interface components {
             max_free_moves: number | null;
             /** Max Steps */
             max_steps: number;
-            /**
-             * Player View
-             * @description the agent saw jackdaw's player view; the tape doesn't depend on it
-             * @default false
-             */
-            player_view?: boolean;
             /** Reward */
             reward: string;
             /** Rng Seed */
@@ -1558,12 +1552,6 @@ export interface components {
             max_steps: number;
             /** Name */
             name: string;
-            /**
-             * Player View
-             * @description observations are jackdaw's player view (player_view=True): no card identity the player hasn't seen
-             * @default false
-             */
-            player_view?: boolean;
             /** Stake */
             stake: number;
         };
@@ -1672,9 +1660,9 @@ export interface operations {
         parameters: {
             query?: {
                 track?: string | null;
-                /** @description the previous page's `next`: the episodes that ended before it */
-                before?: string | null;
                 limit?: number;
+                /** @description the previous page's `next`: the episodes listed after it. A time alone gives the episodes that ended before it. */
+                before?: string | null;
             };
             header?: never;
             path: {
@@ -2009,9 +1997,9 @@ export interface operations {
         parameters: {
             query?: {
                 track?: string | null;
-                /** @description the previous page's `next`: the episodes that ended before it */
-                before?: string | null;
                 limit?: number;
+                /** @description the previous page's `next`: the episodes listed after it. A time alone gives the episodes that ended before it. */
+                before?: string | null;
             };
             header?: never;
             path: {

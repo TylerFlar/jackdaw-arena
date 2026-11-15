@@ -8,7 +8,9 @@ from datetime import UTC, datetime
 from typing import Annotated, Any
 
 import anyio
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
+from pydantic import TypeAdapter
 
 from arena import schemas
 from arena.db import repo
@@ -53,8 +55,7 @@ def tape_document(row: repo.EpisodeRow) -> dict[str, Any]:
         "action_version": row.action_version, "track": row.track, "back": row.back,
         "stake": row.stake, "seed": row.seed, "rng_seed": str(row.rng_seed),
         "max_steps": row.max_steps, "end_on_win": row.end_on_win,
-        "max_free_moves": row.max_free_moves, "player_view": row.player_view,
-        "reward": row.reward_kind,
+        "max_free_moves": row.max_free_moves, "reward": row.reward_kind,
         "indices": row.indices, "tape": row.tape or [], "attempted": row.attempted,
         "final_state_hash": row.final_state_hash, "verified": row.verified,
         "end_reason": row.end_reason,
@@ -87,7 +88,7 @@ def get_leaderboard(
 ) -> dict[str, Any]:
     with request.app.state.engine.connect() as conn:
         t = repo.get_track(conn, track)
-        if t is None:
+        if t is None or not t.active:  # a retired track is gone, as from /api/tracks
             raise HTTPException(404, f"no track {track!r}")
         board = leaderboard(conn, t, season)
     _cache(response, 60)
@@ -118,26 +119,52 @@ def agent_document(conn: Any, agent: repo.Agent) -> dict[str, Any]:
     }
 
 
-def page_cursor(ended_at: datetime) -> str:
-    """The ``next`` cursor: the time in UTC, ending in Z. A "+00:00" offset would need escaping in
-    a query string, where an unescaped "+" arrives as a space."""
-    return ended_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+def page_cursor(row: repo.EpisodeRow) -> str:
+    """The ``next`` cursor: the page's last episode, as its end time in UTC (ending in Z), "_" and
+    its id. The time alone isn't enough: the episodes that end in one batched step share it, and
+    a page that ended inside such a tie skipped the rest of it. Nothing in the cursor needs
+    escaping in a URL: a "+00:00" offset would, since an unescaped "+" arrives as a space."""
+    assert row.ended_at is not None
+    return f"{row.ended_at.astimezone(UTC).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}_{row.id}"
 
 
-#: ``before`` on the episode listings: a time, which FastAPI parses (a 422 when it isn't one).
-Before = Annotated[
-    datetime | None,
-    Query(description="the previous page's `next`: the episodes that ended before it"),
-]
+_TIME: TypeAdapter[datetime] = TypeAdapter(datetime)
 
 
-def episode_page(conn: Any, agent: repo.Agent, track: str | None, before: datetime | None,
+def before_cursor(
+    before: Annotated[
+        str | None,
+        Query(
+            description="the previous page's `next`: the episodes listed after it. A time alone "
+            "gives the episodes that ended before it."
+        ),
+    ] = None,
+) -> repo.Cursor | None:
+    """``before`` on the episode listings: a page's ``next``, or a time alone, as the cursors were
+    until 0.2.0. Anything else is the client's error, a 422 like any bad parameter's."""
+    if before is None:
+        return None
+    time, tie, eid = before.partition("_")
+    try:
+        return repo.Cursor(_TIME.validate_python(time), uuid.UUID(eid) if tie else None)
+    except ValueError as exc:  # pydantic's ValidationError is one too
+        raise RequestValidationError(
+            [{"type": "value_error", "loc": ("query", "before"),
+              "msg": "not a page's cursor or a time", "input": before}]
+        ) from exc  # fmt: skip
+
+
+#: ``before`` on the episode listings, parsed.
+Before = Annotated[repo.Cursor | None, Depends(before_cursor)]
+
+
+def episode_page(conn: Any, agent: repo.Agent, track: str | None, before: repo.Cursor | None,
                  limit: int) -> dict[str, Any]:  # fmt: skip
     rows = repo.ended_episodes_of(conn, agent.id, track, before, limit + 1)
     page, more = rows[:limit], len(rows) > limit
     return {
         "episodes": [episode_summary(r, agent.slug) for r in page],
-        "next": page_cursor(page[-1].ended_at) if more and page[-1].ended_at else None,
+        "next": page_cursor(page[-1]) if more and page[-1].ended_at else None,
     }
 
 
@@ -146,8 +173,8 @@ def agent_episodes(
     request: Request,
     response: Response,
     slug: str,
+    before: Before,
     track: str | None = None,
-    before: Before = None,
     limit: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
     with request.app.state.engine.connect() as conn:

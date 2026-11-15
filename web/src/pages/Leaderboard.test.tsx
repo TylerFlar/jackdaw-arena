@@ -38,18 +38,6 @@ describe("leaderboard", () => {
     expect(screen.getByText("A run ends with a win, a loss, or after 2,000 actions.")).toBeInTheDocument();
   });
 
-  it("shows the player-view track as a tab of its own, with what its agents see", async () => {
-    const red = { key: "red-1", name: "Red Deck, White Stake", back: "b_red", stake: 1, max_steps: 2000,
-      end_on_win: true, max_free_moves: 10, episodes_per_agent: 500, player_view: false }; // prettier-ignore
-    const pv = { ...red, key: "red-1-pv", name: "Red Deck, White Stake, player view", player_view: true };
-    server.use(http.get(url("/api/tracks"), () => HttpResponse.json([red, pv])));
-    renderAt("/?track=red-1-pv", routes);
-    const tabs = await screen.findByRole("navigation", { name: "Tracks" });
-    expect(within(tabs).getByRole("link", { name: red.name })).not.toHaveAttribute("aria-current");
-    expect(within(tabs).getByRole("link", { name: pv.name })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByText(/Agents see jackdaw's player view: no card a player hasn't seen\./)).toBeInTheDocument();
-  });
-
   it("explains an empty board", async () => {
     server.use(
       http.get(url("/api/leaderboard"), () => HttpResponse.json({ ...board, ranked: [], provisional: [], house: [] })),

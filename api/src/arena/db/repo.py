@@ -12,7 +12,7 @@ import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, NamedTuple
 
 from sqlalchemy import Connection, text
 
@@ -43,20 +43,17 @@ class Track:
     max_free_moves: int | None
     episodes_per_agent: int
     active: bool
-    player_view: bool  # observations are jackdaw's player view (player_view=True)
 
     def public(self) -> dict[str, Any]:
         return {
             "key": self.key, "name": self.name, "back": self.back, "stake": self.stake,
             "max_steps": self.max_steps, "end_on_win": self.end_on_win,
             "max_free_moves": self.max_free_moves, "episodes_per_agent": self.episodes_per_agent,
-            "player_view": self.player_view,
         }  # fmt: skip
 
 
 _TRACK_COLS = (
-    "key, name, back, stake, max_steps, end_on_win, max_free_moves, episodes_per_agent, active, "
-    "coalesce(player_view, false)"
+    "key, name, back, stake, max_steps, end_on_win, max_free_moves, episodes_per_agent, active"
 )
 
 
@@ -341,7 +338,6 @@ class EpisodeRow:
     verified: bool | None
     engine_error: str | None
     engine_version: str | None  # the jackdaw release that recorded it (null: the season's first)
-    player_view: bool  # served jackdaw's player view (rows from before the column: no)
 
     @property
     def spec(self) -> RunSpec:
@@ -350,7 +346,6 @@ class EpisodeRow:
             max_steps=self.max_steps, end_on_win=self.end_on_win,
             max_free_moves=self.max_free_moves, reward_kind=self.reward_kind,
             reward_weights=tuple(self.reward_weights) if self.reward_weights else None,
-            player_view=self.player_view,
         )  # fmt: skip
 
     @property
@@ -362,8 +357,7 @@ _EP_COLS = (
     "id, agent_id, track, client_key, season, action_version, seed, rng_seed, back, stake, "
     "max_steps, end_on_win, max_free_moves, reward_kind, reward_weights, status, t, trace, "
     "created_at, last_step_at, ended_at, end_reason, won, ante_reached, rounds_beaten, refused, "
-    "not_ported, attempted, tape, final_state_hash, verified, engine_error, engine_version, "
-    "coalesce(player_view, false)"
+    "not_ported, attempted, tape, final_state_hash, verified, engine_error, engine_version"
 )
 
 
@@ -435,12 +429,10 @@ def insert_episodes(conn: Connection, rows: Iterable[dict[str, Any]]) -> None:
         text(
             "INSERT INTO episodes (id, agent_id, track, client_key, season, engine_version, "
             "action_version, seed, rng_seed, back, stake, max_steps, end_on_win, max_free_moves, "
-            "player_view, reward_kind, reward_weights, status, t, trace, created_at, "
-            "last_step_at) VALUES "
+            "reward_kind, reward_weights, status, t, trace, created_at, last_step_at) VALUES "
             "(:id, :agent_id, :track, :client_key, :season, :engine_version, :action_version, "
             ":seed, :rng_seed, :back, :stake, :max_steps, :end_on_win, :max_free_moves, "
-            ":player_view, :reward_kind, CAST(:reward_weights AS jsonb), 'running', 0, :trace, "
-            ":now, :now)"
+            ":reward_kind, CAST(:reward_weights AS jsonb), 'running', 0, :trace, :now, :now)"
         ),
         [
             {**r, "reward_weights": json.dumps(r["reward_weights"])
@@ -551,22 +543,37 @@ def get_episode(conn: Connection, episode_id: uuid.UUID) -> EpisodeRow | None:
     return _episode(row) if row else None
 
 
+class Cursor(NamedTuple):
+    """Where a listing of ended episodes resumes: after the episode that ended at ``ended_at``
+    with id ``id``. Without an id, at the episodes that ended before ``ended_at``."""
+
+    ended_at: datetime
+    id: uuid.UUID | None = None
+
+
 def ended_episodes_of(
     conn: Connection,
     agent_id: uuid.UUID,
     track: str | None,
-    before: datetime | None,
+    before: Cursor | None,
     limit: int,
 ) -> list[EpisodeRow]:
+    """An agent's ended episodes, the latest first. Episodes that ended in the same batched step
+    share their end time, so ties go by id: the order is total, and a page resumes exactly after
+    its last episode, even inside a tie."""
     sql = f"SELECT {_EP_COLS} FROM episodes WHERE agent_id = :a AND status = 'ended'"
     params: dict[str, Any] = {"a": agent_id, "limit": limit}
     if track:
         sql += " AND track = :track"
         params["track"] = track
-    if before:
-        sql += " AND ended_at < :before"
-        params["before"] = before
-    sql += " ORDER BY ended_at DESC LIMIT :limit"
+    if before is not None:
+        params["before"] = before.ended_at
+        if before.id is None:
+            sql += " AND ended_at < :before"
+        else:
+            sql += " AND (ended_at < :before OR (ended_at = :before AND id < :before_id))"
+            params["before_id"] = before.id
+    sql += " ORDER BY ended_at DESC, id DESC LIMIT :limit"
     return [_episode(r) for r in conn.execute(text(sql), params)]
 
 

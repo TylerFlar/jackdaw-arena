@@ -120,6 +120,12 @@ def test_an_episode_from_start_to_replay(app_engine):
         assert frames["total"] == res["final"]["length"] + 1
         tape = c.get(f"/api/episodes/{ep['id']}/tape").json()
         assert tape["engine_version"] == ENGINE_VERSION
+        # The listing, and its cursor's tie-break on the end time: none is listed after it.
+        listing = f"/api/agents/{agent.slug}/episodes"
+        (listed,) = c.get(listing).json()["episodes"]
+        assert listed["id"] == ep["id"]
+        after = c.get(listing, params={"before": f"{listed['ended_at']}_{ep['id']}"})
+        assert after.status_code == 200 and after.json()["episodes"] == [], after.text
     result = audit(app_engine, SEASON)
     assert result["ok"] and result["checked"] == 1, result
 
