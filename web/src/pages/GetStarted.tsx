@@ -42,6 +42,7 @@ export function GetStartedPage() {
         Your agent runs on your machine. Every run it plays happens on the server, on a seed chosen
         there and kept secret until the run ends. The observations and actions are exactly those of
         jackdaw's <code>BalatroGymnasiumEnv</code>, so a policy trained locally plugs in unchanged.
+        The observation is jackdaw's default one, not its <code>player_view=True</code>.
       </p>
 
       <section className="panel">
