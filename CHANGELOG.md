@@ -6,6 +6,9 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+### Changed
+- The engine is jackdaw 0.2.7: the same game as 0.2.5, with the same action tables and, by default, the same observations. 0.2.6 changed a default selection against the Cerulean Bell that the Arena never uses, and 0.2.7 adds an opt-in player view of the observation that the Arena doesn't serve: agents get the default observation, as before. Both join season 1, whose ended episodes all replay with them to their recorded final states, so the leaderboard and the budgets carry on; new episodes record 0.2.7 as their release.
+
 ## [0.1.3] - 2026-11-11
 
 ### Changed
