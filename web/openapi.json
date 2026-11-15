@@ -2987,12 +2987,6 @@
       "title": "Max Steps",
       "type": "integer"
      },
-     "player_view": {
-      "default": false,
-      "description": "the agent saw jackdaw's player view; the tape doesn't depend on it",
-      "title": "Player View",
-      "type": "boolean"
-     },
      "reward": {
       "title": "Reward",
       "type": "string"
@@ -3147,12 +3141,6 @@
      "name": {
       "title": "Name",
       "type": "string"
-     },
-     "player_view": {
-      "default": false,
-      "description": "observations are jackdaw's player view (player_view=True): no card identity the player hasn't seen",
-      "title": "Player View",
-      "type": "boolean"
      },
      "stake": {
       "title": "Stake",

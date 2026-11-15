@@ -6,6 +6,12 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+### Changed
+- The engine is jackdaw 0.3.0: the same game as 0.2.7, with one observation, the player's view, which leaves out the card identities a player hasn't seen. Every episode now gets it, on `red-1` too. An agent trained on jackdaw's old default observation sees other values in the features that read hidden cards (the cards discarded face down, the draw outs, a Stone's base, the play count), so it may play differently. 0.3.0 joins season 1, whose ended episodes all replay with it to their recorded final states, so the leaderboard and the budgets carry on; the episodes that ended before were played on the old default, and new episodes record 0.3.0 as their release.
+
+### Removed
+- `red-1-pv`, the player-view track: with one observation it's `red-1`'s game with `red-1`'s observations. It isn't listed anymore, takes no new episodes, and its board is gone (`/api/leaderboard?track=red-1-pv` is a 404). Its ended episodes stay public and verifiable. `player_view` is gone from `/api/tracks`, the agent spec and the tapes.
+
 ### Fixed
 - The episode listings (`/api/agents/{slug}/episodes` and `/api/me/agents/{slug}/episodes`, which the agent pages page through) skipped episodes. The episodes that end in one batched step share their end time, and a page that ended inside such a tie left out the rest of it, since the next page started at the episodes that ended strictly before: house-random's listing, 100 at a time, missed 23 of its 1,000 episodes. Ties now go by id, and `next` holds the last episode's end time and id, so a page resumes exactly after it. A time alone still works as `before`.
 

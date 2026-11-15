@@ -224,10 +224,21 @@ def test_catalog_and_tracks(client):
     assert cat["stakes"]["1"]["name"] == "White Stake" and cat["stakes"]["4"]["pos"] == [4, 0]
     tracks = client.get("/api/tracks").json()
     assert tracks[0]["key"] == "red-1" and tracks[0]["episodes_per_agent"] == 500
-    # red-1's game with jackdaw's player view, on a leaderboard and a budget of its own.
-    same = ("back", "stake", "max_steps", "end_on_win", "max_free_moves", "episodes_per_agent")
-    assert [(t["key"], t["player_view"]) for t in tracks] == [("red-1", False), ("red-1-pv", True)]
-    assert all(tracks[0][k] == tracks[1][k] for k in same)
+
+
+def test_red_1_pv_is_retired(client, engine, agents):
+    """jackdaw 0.3.0 has one observation, so red-1-pv (red-1's game with the player view) is
+    red-1 again, and migration 0004 retires it: it isn't listed, its board is gone, and it takes
+    no new episodes."""
+    with engine.connect() as conn:
+        active = conn.execute(text("SELECT active FROM tracks WHERE key = 'red-1-pv'")).scalar_one()
+    assert active is False
+    assert [t["key"] for t in client.get("/api/tracks").json()] == ["red-1"]
+    assert client.get("/api/leaderboard", params={"track": "red-1-pv"}).status_code == 404
+    _, token = agents.agent()
+    r = client.post("/api/v1/episodes", json={"track": "red-1-pv", "keys": [str(uuid.uuid4())]},
+                    headers=bearer(token))  # fmt: skip
+    assert r.status_code == 404 and r.json()["error"] == "unknown_track"
 
 
 def test_tapes_name_the_release_that_recorded_them(client, engine):
@@ -239,9 +250,7 @@ def test_tapes_name_the_release_that_recorded_them(client, engine):
     run_house(client.app.state.episodes, "random", episodes=1)
     with engine.connect() as conn:
         eid = conn.execute(text("SELECT id FROM episodes")).scalar_one()
-    tape = client.get(f"/api/episodes/{eid}/tape").json()
-    assert tape["engine_version"] == ENGINE_VERSION and tape["player_view"] is False
-    with engine.begin() as conn:  # a row from before the columns: its season's first release
-        conn.execute(text("UPDATE episodes SET engine_version = NULL, player_view = NULL"))
-    tape = client.get(f"/api/episodes/{eid}/tape").json()
-    assert tape["engine_version"] == SEASON and tape["player_view"] is False
+    assert client.get(f"/api/episodes/{eid}/tape").json()["engine_version"] == ENGINE_VERSION
+    with engine.begin() as conn:  # a row from before the column: its season's first release
+        conn.execute(text("UPDATE episodes SET engine_version = NULL"))
+    assert client.get(f"/api/episodes/{eid}/tape").json()["engine_version"] == SEASON

@@ -43,9 +43,6 @@ class RunSpec:
     reward_kind: str = "sparse"
     reward_weights: tuple[float, ...] | None = None
     challenge: str | None = None
-    # The observations are jackdaw's player view: no card identity the player hasn't seen. It
-    # changes what the agent is shown, never the run, so tapes and their checks don't use it.
-    player_view: bool = False
 
 
 EnvFactory = Callable[[RunSpec, int], Any]
@@ -56,7 +53,6 @@ def gym_env(spec: RunSpec, max_steps: int) -> Any:
     return _core.GymEnv(
         spec.back, spec.stake, spec.seed, spec.challenge, spec.rng_seed, max_steps,
         spec.end_on_win, spec.reward_kind, spec.reward_weights, spec.max_free_moves,
-        player_view=spec.player_view,
     )  # fmt: skip
 
 

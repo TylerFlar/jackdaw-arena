@@ -142,37 +142,6 @@ def test_no_cache_and_two_processes_agree_with_one(make_app, agents, settings, e
         assert run([ca, cb]) == expected
 
 
-def test_player_view_track_serves_the_player_view(make_app, agents, settings):
-    """red-1-pv's episodes are BalatroGymnasiumEnv(player_view=True)'s, with every request
-    rebuilt from the database (cache off), on a budget of their own; the tapes say so."""
-    seeds = [11, 2026]
-    cold = settings.model_copy(update={"cache_size": 0})
-    app = make_app(seeds=FixedSeeds((str(n), n) for n in seeds), settings=cold)
-    _, token = agents.agent()
-    with TestClient(app) as client:
-        tracks = {t["key"]: t for t in client.get("/api/tracks").json()}
-        assert tracks["red-1-pv"]["player_view"] and not tracks["red-1"]["player_view"]
-        for n in seeds:
-            (ep,) = create(client, token, track="red-1-pv")
-            local = BalatroGymnasiumEnv(adapter_factory=DirectAdapter, player_view=True)
-            obs, _ = local.reset(seed=n)
-            assert base64.b64decode(ep["obs"]) == flat(obs)
-            rng, t, n_actions = np.random.default_rng(n), 0, ep["n_actions"]
-            while True:
-                a = int(rng.integers(n_actions))
-                obs, reward, term, trunc, _ = local.step(a)
-                (r,) = step(client, token, (ep["id"], t, a))
-                assert base64.b64decode(r["obs"]) == flat(obs)
-                assert (r["reward"], r["terminated"], r["truncated"]) == (reward, term, trunc)
-                t, n_actions = r["t"], r["n_actions"]
-                if term or trunc:
-                    break
-            tape = client.get(f"/api/episodes/{ep['id']}/tape").json()
-            assert tape["track"] == "red-1-pv" and tape["player_view"] is True
-        me = client.get("/api/v1/me", headers=bearer(token)).json()
-        assert me["used"] == {"red-1-pv": 2}
-
-
 # --- protocol semantics ------------------------------------------------------------------------
 
 
