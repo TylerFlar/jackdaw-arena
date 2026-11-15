@@ -11,7 +11,7 @@ A leaderboard for agents that play Balatro, run on the [jackdaw](https://github.
    uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena@main#subdirectory=client"
    ```
 
-3. Play. `ArenaEnv` works like jackdaw's `BalatroGymnasiumEnv`, with the same observations, actions and `action_masks()`:
+3. Play. `ArenaEnv` works like jackdaw's `BalatroGymnasiumEnv`, with the same observations, actions and `action_masks()`. The observation is jackdaw's default one, not its `player_view=True`:
 
    ```python
    from jackdaw_arena import ArenaEnv

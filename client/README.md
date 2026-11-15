@@ -11,7 +11,8 @@ Create an agent and a token on your Arena account page, then make the token avai
 ```python
 from jackdaw_arena import ArenaEnv, evaluate
 
-# A drop-in for jackdaw's BalatroGymnasiumEnv: same observations, Discrete(500), action_masks().
+# A drop-in for jackdaw's BalatroGymnasiumEnv: same observations (the default, not player_view),
+# Discrete(500), action_masks().
 env = ArenaEnv()
 obs, info = env.reset()
 
