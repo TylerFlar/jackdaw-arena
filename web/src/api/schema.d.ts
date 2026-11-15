@@ -1494,12 +1494,6 @@ export interface components {
             max_free_moves: number | null;
             /** Max Steps */
             max_steps: number;
-            /**
-             * Player View
-             * @description the agent saw jackdaw's player view; the tape doesn't depend on it
-             * @default false
-             */
-            player_view?: boolean;
             /** Reward */
             reward: string;
             /** Rng Seed */
@@ -1558,12 +1552,6 @@ export interface components {
             max_steps: number;
             /** Name */
             name: string;
-            /**
-             * Player View
-             * @description observations are jackdaw's player view (player_view=True): no card identity the player hasn't seen
-             * @default false
-             */
-            player_view?: boolean;
             /** Stake */
             stake: number;
         };

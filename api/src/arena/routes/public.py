@@ -55,8 +55,7 @@ def tape_document(row: repo.EpisodeRow) -> dict[str, Any]:
         "action_version": row.action_version, "track": row.track, "back": row.back,
         "stake": row.stake, "seed": row.seed, "rng_seed": str(row.rng_seed),
         "max_steps": row.max_steps, "end_on_win": row.end_on_win,
-        "max_free_moves": row.max_free_moves, "player_view": row.player_view,
-        "reward": row.reward_kind,
+        "max_free_moves": row.max_free_moves, "reward": row.reward_kind,
         "indices": row.indices, "tape": row.tape or [], "attempted": row.attempted,
         "final_state_hash": row.final_state_hash, "verified": row.verified,
         "end_reason": row.end_reason,
@@ -89,7 +88,7 @@ def get_leaderboard(
 ) -> dict[str, Any]:
     with request.app.state.engine.connect() as conn:
         t = repo.get_track(conn, track)
-        if t is None:
+        if t is None or not t.active:  # a retired track is gone, as from /api/tracks
             raise HTTPException(404, f"no track {track!r}")
         board = leaderboard(conn, t, season)
     _cache(response, 60)

@@ -68,12 +68,6 @@ export function GetStartedPage() {
       <section className="panel">
         <h2>3. Play</h2>
         <pre>{ENV}</pre>
-        <p>
-          <code>ArenaEnv()</code> plays <code>red-1</code>, which serves jackdaw's default
-          observation. A policy trained with jackdaw's player view (<code>player_view=True</code>,
-          which leaves out every card a player hasn't seen) plays{" "}
-          <code>ArenaEnv(track="red-1-pv")</code>: the same game, ranked on its own leaderboard.
-        </p>
         <p>To evaluate a whole budget in batches, use <code>evaluate()</code>:</p>
         <pre>{EVALUATE}</pre>
         <p className="muted small">
