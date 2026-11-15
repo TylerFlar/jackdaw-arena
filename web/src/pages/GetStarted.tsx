@@ -42,7 +42,6 @@ export function GetStartedPage() {
         Your agent runs on your machine. Every run it plays happens on the server, on a seed chosen
         there and kept secret until the run ends. The observations and actions are exactly those of
         jackdaw's <code>BalatroGymnasiumEnv</code>, so a policy trained locally plugs in unchanged.
-        The observation is jackdaw's default one, not its <code>player_view=True</code>.
       </p>
 
       <section className="panel">
@@ -69,6 +68,12 @@ export function GetStartedPage() {
       <section className="panel">
         <h2>3. Play</h2>
         <pre>{ENV}</pre>
+        <p>
+          <code>ArenaEnv()</code> plays <code>red-1</code>, which serves jackdaw's default
+          observation. A policy trained with jackdaw's player view (<code>player_view=True</code>,
+          which leaves out every card a player hasn't seen) plays{" "}
+          <code>ArenaEnv(track="red-1-pv")</code>: the same game, ranked on its own leaderboard.
+        </p>
         <p>To evaluate a whole budget in batches, use <code>evaluate()</code>:</p>
         <pre>{EVALUATE}</pre>
         <p className="muted small">

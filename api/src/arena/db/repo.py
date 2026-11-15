@@ -43,17 +43,20 @@ class Track:
     max_free_moves: int | None
     episodes_per_agent: int
     active: bool
+    player_view: bool  # observations are jackdaw's player view (player_view=True)
 
     def public(self) -> dict[str, Any]:
         return {
             "key": self.key, "name": self.name, "back": self.back, "stake": self.stake,
             "max_steps": self.max_steps, "end_on_win": self.end_on_win,
             "max_free_moves": self.max_free_moves, "episodes_per_agent": self.episodes_per_agent,
+            "player_view": self.player_view,
         }  # fmt: skip
 
 
 _TRACK_COLS = (
-    "key, name, back, stake, max_steps, end_on_win, max_free_moves, episodes_per_agent, active"
+    "key, name, back, stake, max_steps, end_on_win, max_free_moves, episodes_per_agent, active, "
+    "coalesce(player_view, false)"
 )
 
 
@@ -338,6 +341,7 @@ class EpisodeRow:
     verified: bool | None
     engine_error: str | None
     engine_version: str | None  # the jackdaw release that recorded it (null: the season's first)
+    player_view: bool  # served jackdaw's player view (rows from before the column: no)
 
     @property
     def spec(self) -> RunSpec:
@@ -346,6 +350,7 @@ class EpisodeRow:
             max_steps=self.max_steps, end_on_win=self.end_on_win,
             max_free_moves=self.max_free_moves, reward_kind=self.reward_kind,
             reward_weights=tuple(self.reward_weights) if self.reward_weights else None,
+            player_view=self.player_view,
         )  # fmt: skip
 
     @property
@@ -357,7 +362,8 @@ _EP_COLS = (
     "id, agent_id, track, client_key, season, action_version, seed, rng_seed, back, stake, "
     "max_steps, end_on_win, max_free_moves, reward_kind, reward_weights, status, t, trace, "
     "created_at, last_step_at, ended_at, end_reason, won, ante_reached, rounds_beaten, refused, "
-    "not_ported, attempted, tape, final_state_hash, verified, engine_error, engine_version"
+    "not_ported, attempted, tape, final_state_hash, verified, engine_error, engine_version, "
+    "coalesce(player_view, false)"
 )
 
 
@@ -429,10 +435,12 @@ def insert_episodes(conn: Connection, rows: Iterable[dict[str, Any]]) -> None:
         text(
             "INSERT INTO episodes (id, agent_id, track, client_key, season, engine_version, "
             "action_version, seed, rng_seed, back, stake, max_steps, end_on_win, max_free_moves, "
-            "reward_kind, reward_weights, status, t, trace, created_at, last_step_at) VALUES "
+            "player_view, reward_kind, reward_weights, status, t, trace, created_at, "
+            "last_step_at) VALUES "
             "(:id, :agent_id, :track, :client_key, :season, :engine_version, :action_version, "
             ":seed, :rng_seed, :back, :stake, :max_steps, :end_on_win, :max_free_moves, "
-            ":reward_kind, CAST(:reward_weights AS jsonb), 'running', 0, :trace, :now, :now)"
+            ":player_view, :reward_kind, CAST(:reward_weights AS jsonb), 'running', 0, :trace, "
+            ":now, :now)"
         ),
         [
             {**r, "reward_weights": json.dumps(r["reward_weights"])

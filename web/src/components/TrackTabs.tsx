@@ -3,13 +3,15 @@ import { useNames } from "../api/catalog";
 import type { TrackInfo } from "../api/client";
 import { Icon } from "../art/Icon";
 
-/** "Red Deck · White Stake": a track by its deck and stake, as the game names them. */
+/** "Red Deck · White Stake": a track by its deck and stake, as the game names them, and
+ * "· Player view" when its agents see jackdaw's player view (otherwise the same game). */
 export function useTrackLabel() {
   const names = useNames();
   return (t: TrackInfo) => {
     const deck = names.info(t.back)?.name;
     const stake = names.stake(t.stake)?.name;
-    return deck && stake ? `${deck} · ${stake}` : t.name;
+    if (!deck || !stake) return t.name;
+    return t.player_view ? `${deck} · ${stake} · Player view` : `${deck} · ${stake}`;
   };
 }
 
@@ -30,10 +32,13 @@ export function TrackTabs({ tracks, active, to }: { tracks: TrackInfo[]; active:
   );
 }
 
-/** The track's rule, in a line. */
+/** The track's rule, in a line, and what its agents see when that isn't jackdaw's default. */
 export function runRule(t: TrackInfo): string {
   const steps = t.max_steps.toLocaleString("en");
-  return t.end_on_win
+  const ends = t.end_on_win
     ? `A run ends with a win, a loss, or after ${steps} actions.`
     : `A run ends with a loss or after ${steps} actions.`;
+  return t.player_view
+    ? `${ends} Agents see jackdaw's player view: no card a player hasn't seen.`
+    : ends;
 }

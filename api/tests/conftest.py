@@ -71,7 +71,8 @@ def _clean(request: pytest.FixtureRequest) -> Iterator[None]:
         for table in TABLES:
             if table != "tracks":
                 conn.exec_driver_sql(f"DELETE FROM {table}")
-        conn.exec_driver_sql("DELETE FROM tracks WHERE key <> 'red-1'")
+        # Keep the tracks the migrations insert: they run once per session.
+        conn.exec_driver_sql("DELETE FROM tracks WHERE key NOT IN ('red-1', 'red-1-pv')")
 
 
 @pytest.fixture

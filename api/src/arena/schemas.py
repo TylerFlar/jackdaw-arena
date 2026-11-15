@@ -182,6 +182,11 @@ class TrackInfo(BaseModel):
     end_on_win: bool
     max_free_moves: int | None
     episodes_per_agent: int
+    player_view: bool = Field(
+        False,
+        description="observations are jackdaw's player view (player_view=True): no card "
+        "identity the player hasn't seen",
+    )
 
 
 class EpisodeSummary(BaseModel):
@@ -207,7 +212,9 @@ class AgentPage(BaseModel):
 
 class EpisodePage(BaseModel):
     episodes: list[EpisodeSummary]
-    next: str | None = Field(None, description="cursor for the next page")
+    next: str | None = Field(
+        None, description="cursor for the next page: pass it as `before` (a UTC time, ends in Z)"
+    )
 
 
 # --- replays -----------------------------------------------------------------------------------
@@ -418,6 +425,9 @@ class TapeDoc(BaseModel):
     max_steps: int
     end_on_win: bool
     max_free_moves: int | None
+    player_view: bool = Field(
+        False, description="the agent saw jackdaw's player view; the tape doesn't depend on it"
+    )
     reward: str
     indices: list[int]
     tape: list[list[Any]]
