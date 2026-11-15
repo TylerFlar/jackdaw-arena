@@ -21,6 +21,7 @@ from arena.engine.replay import replay
 from arena.engine.spec import SEASON
 from arena.routes.auth import user_json
 from arena.routes.public import (
+    Before,
     agent_document,
     episode_page,
     episode_summary,
@@ -170,7 +171,7 @@ def my_agent_episodes(
     request: Request,
     user: UserDep,
     track: str | None = None,
-    before: str | None = None,
+    before: Before = None,
     limit: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
     with request.app.state.engine.connect() as conn:

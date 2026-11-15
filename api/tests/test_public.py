@@ -101,6 +101,32 @@ def test_episode_pagination(client, agents, ended, clock):
     assert len(seen) == len(set(seen)) == 5
 
 
+def test_episode_cursors_need_no_escaping_and_bad_ones_are_422(
+    client, agents, ended, clock, sign_in
+):
+    """`next` is a UTC time ending in Z, so a client that puts it in a URL as it is gets the next
+    page. A `before` that isn't a time is the client's error (422), not the server's (500): such
+    as 0.1.4's "+00:00" cursor sent unescaped, whose "+" arrives as a space."""
+    owner = agents.user("cursor-owner")
+    agent, _ = agents.agent("cursor-2", user=owner)
+    for i in range(3):
+        clock.advance(seconds=1)
+        ended(agent, rounds=i)
+    url = "/api/agents/cursor-2/episodes"
+    first = client.get(url, params={"limit": 1}).json()
+    cursor = first["next"]
+    assert cursor.endswith("Z") and "+" not in cursor
+    second = client.get(f"{url}?limit=1&before={cursor}").json()
+    assert second["episodes"][0]["id"] != first["episodes"][0]["id"]
+    offset = cursor.removesuffix("Z") + "+00:00"  # an older cursor, escaped: still a cursor
+    assert client.get(url, params={"limit": 1, "before": offset}).json() == second
+    sign_in(client, owner)
+    for listing in (url, "/api/me/agents/cursor-2/episodes"):
+        for bad in ("yesterday", cursor.removesuffix("Z") + "+00:00"):  # "+" unescaped
+            r = client.get(f"{listing}?before={bad}")
+            assert r.status_code == 422, (listing, bad, r.status_code, r.text)
+
+
 def play_to_end(client, token, seed_rng=0):
     r = client.post("/api/v1/episodes", json={"keys": [str(uuid.uuid4())]}, headers=bearer(token))
     ep = r.json()["episodes"][0]
@@ -168,6 +194,10 @@ def test_catalog_and_tracks(client):
     assert cat["stakes"]["1"]["name"] == "White Stake" and cat["stakes"]["4"]["pos"] == [4, 0]
     tracks = client.get("/api/tracks").json()
     assert tracks[0]["key"] == "red-1" and tracks[0]["episodes_per_agent"] == 500
+    # red-1's game with jackdaw's player view, on a leaderboard and a budget of its own.
+    same = ("back", "stake", "max_steps", "end_on_win", "max_free_moves", "episodes_per_agent")
+    assert [(t["key"], t["player_view"]) for t in tracks] == [("red-1", False), ("red-1-pv", True)]
+    assert all(tracks[0][k] == tracks[1][k] for k in same)
 
 
 def test_tapes_name_the_release_that_recorded_them(client, engine):
@@ -179,7 +209,9 @@ def test_tapes_name_the_release_that_recorded_them(client, engine):
     run_house(client.app.state.episodes, "random", episodes=1)
     with engine.connect() as conn:
         eid = conn.execute(text("SELECT id FROM episodes")).scalar_one()
-    assert client.get(f"/api/episodes/{eid}/tape").json()["engine_version"] == ENGINE_VERSION
-    with engine.begin() as conn:  # a row from before the column: its season's first release
-        conn.execute(text("UPDATE episodes SET engine_version = NULL"))
-    assert client.get(f"/api/episodes/{eid}/tape").json()["engine_version"] == SEASON
+    tape = client.get(f"/api/episodes/{eid}/tape").json()
+    assert tape["engine_version"] == ENGINE_VERSION and tape["player_view"] is False
+    with engine.begin() as conn:  # a row from before the columns: its season's first release
+        conn.execute(text("UPDATE episodes SET engine_version = NULL, player_view = NULL"))
+    tape = client.get(f"/api/episodes/{eid}/tape").json()
+    assert tape["engine_version"] == SEASON and tape["player_view"] is False

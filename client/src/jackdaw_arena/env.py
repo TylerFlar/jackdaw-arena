@@ -5,6 +5,9 @@ Same observation dict, ``Discrete(500)`` actions, ``action_masks()`` for Maskabl
 same ``balatro/*`` keys in the final step's info. Two differences come from evaluating on the
 server: the seed is chosen there (``reset(seed=...)`` is ignored), and every episode counts.
 Resetting or closing in the middle of an episode forfeits it, scored as far as it got.
+
+The track decides the observation: ``red-1`` serves jackdaw's default one, and ``red-1-pv`` the
+same game with jackdaw's player view, for a policy trained with ``player_view=True``.
 """
 
 from __future__ import annotations

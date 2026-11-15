@@ -85,6 +85,33 @@ def test_matches_local_gymnasium_env(kind, reward_fn, max_steps):
             assert out.end_reason == "max_steps"
 
 
+def test_player_view_matches_local_gymnasium_env():
+    """A player-view episode is BalatroGymnasiumEnv(player_view=True)'s, step for step, and the
+    same run as the default view's: only the observations differ, and they do. The house's
+    smart policy plays, so that runs reach the rounds where the two views part (cards played
+    before, face-down bosses)."""
+    from arena.house import smart_chooser
+
+    choose = smart_chooser()
+    differ = 0
+    for n in (7, 1234):
+        local = BalatroGymnasiumEnv(adapter_factory=DirectAdapter, max_steps=300, player_view=True)
+        live = LiveEpisode.start(spec_for(str(n), n, max_steps=300, player_view=True))
+        plain = LiveEpisode.start(spec_for(str(n), n, max_steps=300))
+        obs, _ = local.reset(seed=n)
+        assert live.obs == flat(obs)
+        while live.outcome is None:
+            a = choose(live)
+            obs, reward, term, trunc, _ = local.step(a)
+            r, p = live.apply(a), plain.apply(a)
+            assert (r.obs, r.reward, r.terminated, r.truncated) == (flat(obs), reward, term, trunc)
+            assert (p.reward, p.terminated, p.truncated) == (r.reward, r.terminated, r.truncated)
+            assert plain.n_actions == live.n_actions
+            differ += r.obs != p.obs
+        assert live.outcome == plain.outcome and live.tape == plain.tape
+    assert differ > 0
+
+
 def test_obs_is_one_flat_buffer():
     live = LiveEpisode.start(test_spec(0))
     assert len(live.obs) == OBS_LEN * 4
