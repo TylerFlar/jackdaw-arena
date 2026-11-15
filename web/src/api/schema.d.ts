@@ -750,7 +750,7 @@ export interface components {
             episodes: components["schemas"]["EpisodeSummary"][];
             /**
              * Next
-             * @description cursor for the next page: pass it as `before` (a UTC time, ends in Z)
+             * @description cursor for the next page: pass it as `before` (the last episode's end time in UTC, then its id; nothing in it needs escaping in a URL)
              */
             next?: string | null;
         };
@@ -1672,9 +1672,9 @@ export interface operations {
         parameters: {
             query?: {
                 track?: string | null;
-                /** @description the previous page's `next`: the episodes that ended before it */
-                before?: string | null;
                 limit?: number;
+                /** @description the previous page's `next`: the episodes listed after it. A time alone gives the episodes that ended before it. */
+                before?: string | null;
             };
             header?: never;
             path: {
@@ -2009,9 +2009,9 @@ export interface operations {
         parameters: {
             query?: {
                 track?: string | null;
-                /** @description the previous page's `next`: the episodes that ended before it */
-                before?: string | null;
                 limit?: number;
+                /** @description the previous page's `next`: the episodes listed after it. A time alone gives the episodes that ended before it. */
+                before?: string | null;
             };
             header?: never;
             path: {

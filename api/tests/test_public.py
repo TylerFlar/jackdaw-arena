@@ -101,12 +101,39 @@ def test_episode_pagination(client, agents, ended, clock):
     assert len(seen) == len(set(seen)) == 5
 
 
+def test_episode_pagination_through_ties(client, agents, ended, clock, sign_in):
+    """The episodes that end in one batched step share their end time. A page that ended inside
+    such a tie used to skip the rest of it, since the next page started at the episodes that
+    ended strictly before. Ties go by id now, and the cursor holds it."""
+    owner = agents.user("tie-owner")
+    agent, _ = agents.agent("ties", user=owner)
+    batches = []
+    for size in (3, 1, 4):
+        clock.advance(seconds=1)
+        batches.append([ended(agent, rounds=0) for _ in range(size)])
+    expected = [str(e) for batch in reversed(batches) for e in sorted(batch, reverse=True)]
+    sign_in(client, owner)
+    for listing in ("/api/agents/ties/episodes", "/api/me/agents/ties/episodes"):
+        for limit in (1, 2, 3, 8):
+            seen, cursor = [], None
+            while True:
+                params = {"limit": limit} | ({"before": cursor} if cursor else {})
+                page = client.get(listing, params=params).json()
+                seen += [e["id"] for e in page["episodes"]]
+                cursor = page["next"]
+                if not cursor:
+                    break
+            assert seen == expected, (listing, limit)
+
+
 def test_episode_cursors_need_no_escaping_and_bad_ones_are_422(
     client, agents, ended, clock, sign_in
 ):
-    """`next` is a UTC time ending in Z, so a client that puts it in a URL as it is gets the next
-    page. A `before` that isn't a time is the client's error (422), not the server's (500): such
-    as 0.1.4's "+00:00" cursor sent unescaped, whose "+" arrives as a space."""
+    """`next` is the last episode's end time in UTC, ending in Z, then "_" and its id, so a
+    client that puts it in a URL as it is gets the next page. A time alone, as the cursors were
+    until 0.2.0, gives the episodes that ended before it. Anything else as `before` is the
+    client's error (422), not the server's (500): such as 0.1.4's "+00:00" cursor sent unescaped,
+    whose "+" arrives as a space."""
     owner = agents.user("cursor-owner")
     agent, _ = agents.agent("cursor-2", user=owner)
     for i in range(3):
@@ -115,16 +142,19 @@ def test_episode_cursors_need_no_escaping_and_bad_ones_are_422(
     url = "/api/agents/cursor-2/episodes"
     first = client.get(url, params={"limit": 1}).json()
     cursor = first["next"]
-    assert cursor.endswith("Z") and "+" not in cursor
+    time, _, eid = cursor.partition("_")
+    assert time.endswith("Z") and eid == first["episodes"][0]["id"] and "+" not in cursor
     second = client.get(f"{url}?limit=1&before={cursor}").json()
     assert second["episodes"][0]["id"] != first["episodes"][0]["id"]
-    offset = cursor.removesuffix("Z") + "+00:00"  # an older cursor, escaped: still a cursor
+    assert client.get(f"{url}?limit=1&before={time}").json() == second  # 0.1.5's cursor
+    offset = time.removesuffix("Z") + "+00:00"  # 0.1.4's, escaped
     assert client.get(url, params={"limit": 1, "before": offset}).json() == second
     sign_in(client, owner)
     for listing in (url, "/api/me/agents/cursor-2/episodes"):
-        for bad in ("yesterday", cursor.removesuffix("Z") + "+00:00"):  # "+" unescaped
+        for bad in ("yesterday", offset, f"{time}_", f"{time}_nope", f"_{eid}"):  # "+" unescaped
             r = client.get(f"{listing}?before={bad}")
             assert r.status_code == 422, (listing, bad, r.status_code, r.text)
+            assert r.json()["detail"][0]["loc"] == ["query", "before"], r.text
 
 
 def play_to_end(client, token, seed_rng=0):

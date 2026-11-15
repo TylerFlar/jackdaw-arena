@@ -213,7 +213,9 @@ class AgentPage(BaseModel):
 class EpisodePage(BaseModel):
     episodes: list[EpisodeSummary]
     next: str | None = Field(
-        None, description="cursor for the next page: pass it as `before` (a UTC time, ends in Z)"
+        None,
+        description="cursor for the next page: pass it as `before` (the last episode's end time "
+        "in UTC, then its id; nothing in it needs escaping in a URL)",
     )
 
 
