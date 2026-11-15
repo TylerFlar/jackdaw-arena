@@ -234,7 +234,8 @@ class EpisodeService:
                                 "action_version": ACTION_VERSION, "seed": seed,
                                 "rng_seed": rng_seed, "back": track.back, "stake": track.stake,
                                 "max_steps": track.max_steps, "end_on_win": track.end_on_win,
-                                "max_free_moves": track.max_free_moves, "reward_kind": reward_kind,
+                                "max_free_moves": track.max_free_moves,
+                                "player_view": track.player_view, "reward_kind": reward_kind,
                                 "reward_weights": list(weight_values) if weight_values else None,
                                 "trace": b"", "now": now,
                             })  # fmt: skip

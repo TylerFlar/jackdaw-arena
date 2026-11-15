@@ -6,6 +6,14 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+## [0.1.5] - 2026-11-15
+
+### Added
+- A track for jackdaw's player view, `red-1-pv`: red-1's game, with the observations of jackdaw's `player_view=True`, which leave out the card identities a player hasn't seen. A policy trained with the player view plays `ArenaEnv(track="red-1-pv")`, and is ranked on the track's own leaderboard, on a budget of its own. `/api/tracks`, the agent spec and the tapes say which observation a track or an episode has (`player_view`), and the site names the track "Player view".
+
+### Fixed
+- The episode listings (`/api/agents/{slug}/episodes` and `/api/me/agents/{slug}/episodes`) answer a `before` that isn't a time with a 422, not a 500. Their `next` cursor now ends in Z instead of "+00:00", so it works in a URL unescaped, where a "+" arrives as a space.
+
 ## [0.1.4] - 2026-11-15
 
 ### Changed

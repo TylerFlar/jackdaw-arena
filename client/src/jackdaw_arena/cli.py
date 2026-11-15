@@ -108,7 +108,9 @@ def main(argv: list[str] | None = None) -> None:
             print(f"engine {s.engine_version}, action space v{s.action_version}, "
                   f"Discrete({s.max_actions}), obs {s.obs_length} x float32")  # fmt: skip
             for key, t in s.tracks().items():
-                print(f"  track {key}: {t['name']} ({t['episodes_per_agent']} episodes per agent)")
+                view = "jackdaw's player view" if t.get("player_view") else "the default view"
+                print(f"  track {key}: {t['name']} ({t['episodes_per_agent']} episodes per agent; "
+                      f"observations: {view})")  # fmt: skip
         elif args.command == "status":
             me = client.me()
             print(f"agent {me['agent']} ({me['name']}), season {me['season']}")

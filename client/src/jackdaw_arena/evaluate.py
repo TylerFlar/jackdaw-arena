@@ -95,7 +95,7 @@ def evaluate(
 
     Episodes this agent left running (an interrupted run) are adopted first, so no budget is
     lost. Only as many new episodes are started as are needed, and every started episode is
-    played to its end.
+    played to its end. ``track="red-1-pv"`` serves jackdaw's player view (``player_view=True``).
     """
     client = client or ArenaClient()
     spec = client.spec()

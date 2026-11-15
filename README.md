@@ -11,7 +11,7 @@ A leaderboard for agents that play Balatro, run on the [jackdaw](https://github.
    uv add "jackdaw-arena @ git+https://github.com/TylerFlar/jackdaw-arena@main#subdirectory=client"
    ```
 
-3. Play. `ArenaEnv` works like jackdaw's `BalatroGymnasiumEnv`, with the same observations, actions and `action_masks()`. The observation is jackdaw's default one, not its `player_view=True`:
+3. Play. `ArenaEnv` works like jackdaw's `BalatroGymnasiumEnv`, with the same observations, actions and `action_masks()`:
 
    ```python
    from jackdaw_arena import ArenaEnv
@@ -24,6 +24,8 @@ A leaderboard for agents that play Balatro, run on the [jackdaw](https://github.
        obs, reward, terminated, truncated, info = env.step(int(action))
        done = terminated or truncated
    ```
+
+   Its track, `red-1`, serves jackdaw's default observation. A policy trained with jackdaw's player view (`player_view=True`) plays `ArenaEnv(track="red-1-pv")`: the same game, ranked apart.
 
    To play your agent's whole budget in batches, use `evaluate()`. It takes the chooser from jackdaw's `examples/balatro_sb3.py`, and picks up where it stopped if interrupted:
 

@@ -4,8 +4,8 @@ every response. Ended episodes are immutable."""
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-from typing import Any
+from datetime import UTC, datetime
+from typing import Annotated, Any
 
 import anyio
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -53,7 +53,8 @@ def tape_document(row: repo.EpisodeRow) -> dict[str, Any]:
         "action_version": row.action_version, "track": row.track, "back": row.back,
         "stake": row.stake, "seed": row.seed, "rng_seed": str(row.rng_seed),
         "max_steps": row.max_steps, "end_on_win": row.end_on_win,
-        "max_free_moves": row.max_free_moves, "reward": row.reward_kind,
+        "max_free_moves": row.max_free_moves, "player_view": row.player_view,
+        "reward": row.reward_kind,
         "indices": row.indices, "tape": row.tape or [], "attempted": row.attempted,
         "final_state_hash": row.final_state_hash, "verified": row.verified,
         "end_reason": row.end_reason,
@@ -117,14 +118,26 @@ def agent_document(conn: Any, agent: repo.Agent) -> dict[str, Any]:
     }
 
 
-def episode_page(conn: Any, agent: repo.Agent, track: str | None, before: str | None,
+def page_cursor(ended_at: datetime) -> str:
+    """The ``next`` cursor: the time in UTC, ending in Z. A "+00:00" offset would need escaping in
+    a query string, where an unescaped "+" arrives as a space."""
+    return ended_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+#: ``before`` on the episode listings: a time, which FastAPI parses (a 422 when it isn't one).
+Before = Annotated[
+    datetime | None,
+    Query(description="the previous page's `next`: the episodes that ended before it"),
+]
+
+
+def episode_page(conn: Any, agent: repo.Agent, track: str | None, before: datetime | None,
                  limit: int) -> dict[str, Any]:  # fmt: skip
-    cursor = datetime.fromisoformat(before) if before else None
-    rows = repo.ended_episodes_of(conn, agent.id, track, cursor, limit + 1)
+    rows = repo.ended_episodes_of(conn, agent.id, track, before, limit + 1)
     page, more = rows[:limit], len(rows) > limit
     return {
         "episodes": [episode_summary(r, agent.slug) for r in page],
-        "next": page[-1].ended_at.isoformat() if more and page[-1].ended_at else None,
+        "next": page_cursor(page[-1].ended_at) if more and page[-1].ended_at else None,
     }
 
 
@@ -134,7 +147,7 @@ def agent_episodes(
     response: Response,
     slug: str,
     track: str | None = None,
-    before: str | None = None,
+    before: Before = None,
     limit: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
     with request.app.state.engine.connect() as conn:

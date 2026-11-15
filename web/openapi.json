@@ -699,7 +699,7 @@
         "type": "null"
        }
       ],
-      "description": "cursor for the next page",
+      "description": "cursor for the next page: pass it as `before` (a UTC time, ends in Z)",
       "title": "Next"
      }
     },
@@ -2987,6 +2987,12 @@
       "title": "Max Steps",
       "type": "integer"
      },
+     "player_view": {
+      "default": false,
+      "description": "the agent saw jackdaw's player view; the tape doesn't depend on it",
+      "title": "Player View",
+      "type": "boolean"
+     },
      "reward": {
       "title": "Reward",
       "type": "string"
@@ -3142,6 +3148,12 @@
       "title": "Name",
       "type": "string"
      },
+     "player_view": {
+      "default": false,
+      "description": "observations are jackdaw's player view (player_view=True): no card identity the player hasn't seen",
+      "title": "Player View",
+      "type": "boolean"
+     },
      "stake": {
       "title": "Stake",
       "type": "integer"
@@ -3254,7 +3266,7 @@
  "info": {
   "description": "Hosted, verifiable evaluation for Balatro agents on the jackdaw engine.",
   "title": "Jackdaw Arena",
-  "version": "0.1.4"
+  "version": "0.1.5"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -3384,18 +3396,21 @@
       }
      },
      {
+      "description": "the previous page's `next`: the episodes that ended before it",
       "in": "query",
       "name": "before",
       "required": false,
       "schema": {
        "anyOf": [
         {
+         "format": "date-time",
          "type": "string"
         },
         {
          "type": "null"
         }
        ],
+       "description": "the previous page's `next`: the episodes that ended before it",
        "title": "Before"
       }
      },
@@ -3917,18 +3932,21 @@
       }
      },
      {
+      "description": "the previous page's `next`: the episodes that ended before it",
       "in": "query",
       "name": "before",
       "required": false,
       "schema": {
        "anyOf": [
         {
+         "format": "date-time",
          "type": "string"
         },
         {
          "type": "null"
         }
        ],
+       "description": "the previous page's `next`: the episodes that ended before it",
        "title": "Before"
       }
      },
