@@ -6,6 +6,9 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+### Fixed
+- The episode listings (`/api/agents/{slug}/episodes` and `/api/me/agents/{slug}/episodes`, which the agent pages page through) skipped episodes. The episodes that end in one batched step share their end time, and a page that ended inside such a tie left out the rest of it, since the next page started at the episodes that ended strictly before: house-random's listing, 100 at a time, missed 23 of its 1,000 episodes. Ties now go by id, and `next` holds the last episode's end time and id, so a page resumes exactly after it. A time alone still works as `before`.
+
 ## [0.1.5] - 2026-11-15
 
 ### Added

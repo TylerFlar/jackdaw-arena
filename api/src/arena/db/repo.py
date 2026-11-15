@@ -12,7 +12,7 @@ import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, NamedTuple
 
 from sqlalchemy import Connection, text
 
@@ -551,22 +551,37 @@ def get_episode(conn: Connection, episode_id: uuid.UUID) -> EpisodeRow | None:
     return _episode(row) if row else None
 
 
+class Cursor(NamedTuple):
+    """Where a listing of ended episodes resumes: after the episode that ended at ``ended_at``
+    with id ``id``. Without an id, at the episodes that ended before ``ended_at``."""
+
+    ended_at: datetime
+    id: uuid.UUID | None = None
+
+
 def ended_episodes_of(
     conn: Connection,
     agent_id: uuid.UUID,
     track: str | None,
-    before: datetime | None,
+    before: Cursor | None,
     limit: int,
 ) -> list[EpisodeRow]:
+    """An agent's ended episodes, the latest first. Episodes that ended in the same batched step
+    share their end time, so ties go by id: the order is total, and a page resumes exactly after
+    its last episode, even inside a tie."""
     sql = f"SELECT {_EP_COLS} FROM episodes WHERE agent_id = :a AND status = 'ended'"
     params: dict[str, Any] = {"a": agent_id, "limit": limit}
     if track:
         sql += " AND track = :track"
         params["track"] = track
-    if before:
-        sql += " AND ended_at < :before"
-        params["before"] = before
-    sql += " ORDER BY ended_at DESC LIMIT :limit"
+    if before is not None:
+        params["before"] = before.ended_at
+        if before.id is None:
+            sql += " AND ended_at < :before"
+        else:
+            sql += " AND (ended_at < :before OR (ended_at = :before AND id < :before_id))"
+            params["before_id"] = before.id
+    sql += " ORDER BY ended_at DESC, id DESC LIMIT :limit"
     return [_episode(r) for r in conn.execute(text(sql), params)]
 
 
