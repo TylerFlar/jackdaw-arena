@@ -6,6 +6,8 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+## [0.2.0] - 2026-11-15
+
 ### Changed
 - The engine is jackdaw 0.3.0: the same game as 0.2.7, with one observation, the player's view, which leaves out the card identities a player hasn't seen. Every episode now gets it, on `red-1` too. An agent trained on jackdaw's old default observation sees other values in the features that read hidden cards (the cards discarded face down, the draw outs, a Stone's base, the play count), so it may play differently. 0.3.0 joins season 1, whose ended episodes all replay with it to their recorded final states, so the leaderboard and the budgets carry on; the episodes that ended before were played on the old default, and new episodes record 0.3.0 as their release.
 
