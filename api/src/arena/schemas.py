@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_serializer
 
@@ -27,6 +27,18 @@ class EpisodeCreate(BaseModel):
         description="One idempotency key per episode: resending a key returns its episode",
     )
     reward: Reward = Reward()
+    view: bool = Field(False, description="return each running episode's player view")
+
+
+PlayerView = dict[str, Any]
+"""jackdaw's player view (``jackdaw.player_view/1``): what a player sees, as structured data,
+with no hidden information. jackdaw's ``docs/api.md`` ("What a player sees") documents it."""
+
+_VIEW_DESCRIPTION = (
+    "what a player sees now (jackdaw.player_view/1, as jackdaw's Game.player_view): every card "
+    "a player can see, face-down cards by id and place only, the deck as the deck view shows "
+    "it, and the last hand's scoring events; when asked for"
+)
 
 
 class Final(BaseModel):
@@ -57,15 +69,30 @@ class EpisodeState(BaseModel):
     obs: str | None = Field(description="base64 of 614 little-endian float32 values")
     n_actions: int = Field(description="the first n of the Discrete(500) actions are legal")
     final: Final | None = None
+    view: PlayerView | None = Field(None, description=_VIEW_DESCRIPTION)
 
 
 class EpisodesCreated(BaseModel):
     episodes: list[EpisodeState]
 
 
+class FactoredAction(BaseModel):
+    """An action of jackdaw's factored space (``FactoredAction``), given instead of an index:
+    any action the episode's env offers, one its action table holds or would hold if it held
+    every legal action instead of a sample. Card selections list hand indices in ascending
+    order, as the table does."""
+
+    action_type: int = Field(ge=0, le=22, description="jackdaw's ActionType, 0-22")
+    entity_target: int | None = Field(None, ge=0, lt=65535)
+    card_target: list[Annotated[int, Field(ge=0, lt=65535)]] | None = Field(None, max_length=16)
+
+
+Action = Annotated[int, Field(ge=0, lt=65536)] | FactoredAction
+
+
 class LastStep(BaseModel):
     t: int
-    action: int
+    action: Action
     reward: float
     terminated: bool
     truncated: bool
@@ -78,11 +105,14 @@ class EpisodeResume(EpisodeState):
 class StepItem(BaseModel):
     id: uuid.UUID
     t: int = Field(ge=0, description="the episode's step count before this action")
-    action: int = Field(ge=0, lt=65536)
+    action: Action = Field(
+        description="an index into the step's action table, or a factored action the env offers"
+    )
 
 
 class StepRequest(BaseModel):
     steps: list[StepItem] = Field(min_length=1, max_length=256)
+    view: bool = Field(False, description="return each stepped episode's player view")
 
 
 class StepOutcome(BaseModel):
@@ -95,6 +125,7 @@ class StepOutcome(BaseModel):
     terminated: bool | None = None
     truncated: bool | None = None
     final: Final | None = None
+    view: PlayerView | None = Field(None, description=_VIEW_DESCRIPTION)
     error: Literal["conflict", "illegal_action", "ended", "not_found"] | None = None
 
 
@@ -423,7 +454,9 @@ class TapeDoc(BaseModel):
     end_on_win: bool
     max_free_moves: int | None
     reward: str
-    indices: list[int]
+    indices: list[int | FactoredAction] = Field(
+        description="the agent's steps: table indices, or factored actions"
+    )
     tape: list[list[Any]]
     attempted: Any = None
     final_state_hash: str | None

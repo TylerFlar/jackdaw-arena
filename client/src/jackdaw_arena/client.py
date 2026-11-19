@@ -11,7 +11,7 @@ import os
 import random
 import time
 import uuid
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +22,30 @@ from jackdaw_arena.spec import Spec
 DEFAULT_URL = "https://arena.tylerflar.com"
 TOKEN_FILE = Path.home() / ".jackdaw-arena" / "token"
 RETRY_STATUS = {429, 502, 503, 504}
+
+
+def wire_action(action: Any) -> int | dict[str, Any]:
+    """An action as the protocol takes it: an index into the step's action table (an ``int``,
+    numpy's included), or a factored action the episode's env offers, given as jackdaw's
+    ``FactoredAction``, a mapping with its fields, or ``(action_type, entity_target,
+    card_target)``. A factored action reaches the actions the table's sample left out; its
+    ``card_target`` lists hand indices in ascending order, as the table does."""
+    if isinstance(action, Mapping):
+        t = action["action_type"]
+        entity, cards = action.get("entity_target"), action.get("card_target")
+    elif hasattr(action, "action_type"):
+        t = action.action_type
+        entity = getattr(action, "entity_target", None)
+        cards = getattr(action, "card_target", None)
+    elif isinstance(action, (tuple, list)):
+        t, entity, cards = action
+    else:
+        return int(action)
+    return {
+        "action_type": int(t),
+        "entity_target": None if entity is None else int(entity),
+        "card_target": None if cards is None else [int(c) for c in cards],
+    }
 
 
 class ArenaError(Exception):
@@ -115,19 +139,33 @@ class ArenaClient:
         reward: str = "sparse",
         weights: dict[str, float] | None = None,
         keys: Sequence[str] | None = None,
+        view: bool = False,
     ) -> list[dict[str, Any]]:
+        """Start ``n`` episodes. ``view``: each running one comes with its player ``view``."""
         keys = list(keys) if keys is not None else [str(uuid.uuid4()) for _ in range(n)]
         body: dict[str, Any] = {"track": track, "keys": keys, "reward": {"kind": reward}}
         if weights:
             body["reward"]["weights"] = weights
+        if view:
+            body["view"] = True
         return self.request("POST", "/api/v1/episodes", json=body)["episodes"]
 
-    def step(self, items: Iterable[tuple[str, int, int]]) -> list[dict[str, Any]]:
-        steps = [{"id": str(i), "t": int(t), "action": int(a)} for i, t, a in items]
-        return self.request("POST", "/api/v1/step", json={"steps": steps})["results"]
+    def step(
+        self, items: Iterable[tuple[str, int, Any]], view: bool = False
+    ) -> list[dict[str, Any]]:
+        """One step in each episode: ``(id, t, action)``, the action an index or a factored
+        action (:func:`wire_action`). ``view``: each result comes with the player ``view``
+        after it."""
+        steps = [{"id": str(i), "t": int(t), "action": wire_action(a)} for i, t, a in items]
+        body: dict[str, Any] = {"steps": steps}
+        if view:
+            body["view"] = True
+        return self.request("POST", "/api/v1/step", json=body)["results"]
 
-    def get(self, episode_id: str) -> dict[str, Any]:
-        return self.request("GET", f"/api/v1/episodes/{episode_id}")
+    def get(self, episode_id: str, view: bool = False) -> dict[str, Any]:
+        """An episode's state; ``view``: with its player ``view``, while it runs."""
+        query = "?view=true" if view else ""
+        return self.request("GET", f"/api/v1/episodes/{episode_id}{query}")
 
     def running(self) -> list[dict[str, Any]]:
         return self.request("GET", "/api/v1/episodes?status=running")

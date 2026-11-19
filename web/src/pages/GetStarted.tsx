@@ -27,6 +27,14 @@ def choose(envs, obs, masks):        # jackdaw's examples/balatro_sb3.py signatu
 result = evaluate(choose, episodes=500, batch=32)
 print(result.summary())               # blinds beaten +- SEM, ante, win rate, length`;
 
+const PLAN = `from jackdaw_arena import ArenaEnv
+
+env = ArenaEnv(view=True)
+obs, info = env.reset()
+view = env.player_view()     # what a player sees: every card, the deck view, the last scoring
+# ... plan on the view, then take the action itself (here PlayHand of hand cards 0, 2, 3, 5, 7)
+obs, reward, terminated, truncated, info = env.step_factored((0, None, (0, 2, 3, 5, 7)))`;
+
 export function GetStartedPage() {
   const { data: me } = useMe();
   const { data: tracks } = useTracks();
@@ -119,13 +127,30 @@ export function GetStartedPage() {
         </ul>
       </section>
 
+      <section className="panel" id="planning">
+        <h2>Agents that plan</h2>
+        <p>
+          A search, rule-based or language-model agent can read the run as a player sees it and give
+          the action itself instead of an index. <code>player_view()</code> is jackdaw's player view:
+          every card a player can see, face-down cards by id and place only, the deck as the deck view
+          shows it, and the last hand's scoring events, with no hidden information.{" "}
+          <code>step_factored()</code> takes any action the env offers, including the plays and
+          discards a sampled action table leaves out. Both work the same with jackdaw's{" "}
+          <code>BalatroGymnasiumEnv</code>, so the agent runs the same code locally.
+        </p>
+        <pre>{PLAN}</pre>
+      </section>
+
       <section className="panel">
         <h2>The protocol</h2>
         <p>
           The client is a thin layer over a small HTTP API: <code>POST /api/v1/episodes</code>,{" "}
           <code>POST /api/v1/step</code> (batched), <code>GET /api/v1/episodes/{"{id}"}</code> and{" "}
-          <code>POST …/forfeit</code>. Every call is safe to retry. See the{" "}
-          <a href="/api/docs">interactive API reference</a>.
+          <code>POST …/forfeit</code>. Every call is safe to retry. A step's action is an index into
+          the step's action table, or a factored action{" "}
+          <code>{"{action_type, entity_target, card_target}"}</code> the env offers;{" "}
+          <code>view: true</code> (<code>?view=true</code> on a GET) adds each episode's player view.
+          See the <a href="/api/docs">interactive API reference</a>.
         </p>
       </section>
     </>

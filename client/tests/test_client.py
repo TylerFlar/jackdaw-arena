@@ -11,7 +11,14 @@ import numpy as np
 import pytest
 import respx
 
-from jackdaw_arena import ArenaClient, ArenaEnv, evaluate, find_token, random_chooser
+from jackdaw_arena import (
+    ArenaClient,
+    ArenaEnv,
+    evaluate,
+    find_token,
+    random_chooser,
+    wire_action,
+)
 from jackdaw_arena.client import ArenaError
 
 URL = "http://arena.test"
@@ -42,6 +49,7 @@ class Server:
     def __init__(self, mock: respx.MockRouter, length: int = 3) -> None:
         self.length, self.episodes, self.created, self.forfeited = length, {}, [], []
         self.running_ids: list[str] = []
+        self.actions: list[object] = []
         mock.get(f"{URL}/api/v1/spec").respond(json=SPEC)
         mock.post(f"{URL}/api/v1/episodes").mock(side_effect=self.create)
         mock.post(f"{URL}/api/v1/step").mock(side_effect=self.step)
@@ -60,7 +68,8 @@ class Server:
             self.episodes[k] = 0
             self.created.append(k)
             out.append({"id": k, "key": k, "status": "running", "t": 0, "obs": obs_b64(0),
-                        "n_actions": 4, "final": None})  # fmt: skip
+                        "n_actions": 4, "final": None,
+                        "view": {"t": 0} if body.get("view") else None})  # fmt: skip
         return httpx.Response(201, json={"episodes": out})
 
     def final(self, eid: str) -> dict:
@@ -70,23 +79,29 @@ class Server:
 
     def step(self, request: httpx.Request) -> httpx.Response:
         results = []
-        for s in json.loads(request.content)["steps"]:
+        body = json.loads(request.content)
+        for s in body["steps"]:
             t = self.episodes[s["id"]]
-            assert s["t"] == t and 0 <= s["action"] < 4
+            a = s["action"]
+            assert s["t"] == t and (isinstance(a, dict) or 0 <= a < 4)
+            self.actions.append(a)
             t += 1
             self.episodes[s["id"]] = t
             done = t == self.length
             results.append({"id": s["id"], "ok": True, "t": t, "obs": obs_b64(t),
                             "n_actions": 0 if done else 4, "reward": 1.0 if done else 0.0,
                             "terminated": done, "truncated": False,
-                            "final": self.final(s["id"]) if done else None})  # fmt: skip
+                            "final": self.final(s["id"]) if done else None,
+                            "view": {"t": t} if body.get("view") else None})  # fmt: skip
         return httpx.Response(200, json={"results": results})
 
     def get(self, request: httpx.Request) -> httpx.Response:
         eid = request.url.path.rsplit("/", 1)[1]
         t = self.episodes[eid]
+        view = {"t": t} if request.url.params.get("view") == "true" else None
         return httpx.Response(200, json={"id": eid, "key": eid, "status": "running", "t": t,
-                                         "obs": obs_b64(t), "n_actions": 4, "final": None})  # fmt: skip
+                                         "obs": obs_b64(t), "n_actions": 4, "final": None,
+                                         "view": view})  # fmt: skip
 
     def forfeit(self, request: httpx.Request) -> httpx.Response:
         eid = request.url.path.split("/")[-2]
@@ -284,3 +299,58 @@ def test_verify_exit_codes(monkeypatch, tmp_path):
         with pytest.raises(SystemExit) as e:
             main(["--url", URL, "verify", str(path)])
         assert e.value.code == code
+
+
+# --- factored actions and the player view ------------------------------------------------------
+
+
+def test_wire_action_takes_indices_and_factored_actions():
+    from dataclasses import dataclass
+
+    @dataclass(frozen=True)
+    class FactoredAction:  # jackdaw's, as far as the wire goes
+        action_type: int
+        card_target: tuple[int, ...] | None = None
+        entity_target: int | None = None
+
+    play = {"action_type": 0, "entity_target": None, "card_target": [0, 2, 7]}
+    assert wire_action(3) == 3 and wire_action(np.int64(3)) == 3
+    assert wire_action(FactoredAction(0, card_target=(0, 2, 7))) == play
+    assert wire_action((0, None, (0, 2, 7))) == play
+    assert wire_action({"action_type": 0, "card_target": [0, 2, 7]}) == play
+    assert wire_action((11, 1, None)) == {
+        "action_type": 11, "entity_target": 1, "card_target": None,
+    }  # fmt: skip
+
+
+def test_env_steps_factored_actions_and_shows_the_view(client, server):
+    env = ArenaEnv(client, view=True)
+    env.reset()
+    assert env.player_view() == {"t": 0}
+    env.step_factored((0, None, (1, 3)))
+    assert server.actions[-1] == {"action_type": 0, "entity_target": None, "card_target": [1, 3]}
+    assert env.player_view() == {"t": 1}
+    env.step(2)
+    assert server.actions[-1] == 2 and env.player_view() == {"t": 2}
+    env.close()
+
+
+def test_env_fetches_the_view_when_not_kept(client, server):
+    env = ArenaEnv(client)
+    env.reset()
+    env.step(0)
+    assert env.player_view() == {"t": 1}  # asked for with GET ?view=true
+    env.close()
+
+
+def test_evaluate_passes_factored_actions_and_views(client, server):
+    seen: list[object] = []
+
+    def choose(envs, obs, masks):
+        seen.extend(h.view for h in envs)
+        return [{"action_type": 0, "card_target": [0]} for _ in envs]
+
+    result = evaluate(choose, 2, batch=2, client=client, progress=False, view=True)
+    assert len(result.results) == 2
+    assert all(isinstance(a, dict) for a in server.actions)
+    assert seen and all(v is not None for v in seen)

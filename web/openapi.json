@@ -673,6 +673,12 @@
       "default": "red-1",
       "title": "Track",
       "type": "string"
+     },
+     "view": {
+      "default": false,
+      "description": "return each running episode's player view",
+      "title": "View",
+      "type": "boolean"
      }
     },
     "required": [
@@ -765,6 +771,19 @@
      "t": {
       "title": "T",
       "type": "integer"
+     },
+     "view": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "what a player sees now (jackdaw.player_view/1, as jackdaw's Game.player_view): every card a player can see, face-down cards by id and place only, the deck as the deck view shows it, and the last hand's scoring events; when asked for",
+      "title": "View"
      }
     },
     "required": [
@@ -824,6 +843,19 @@
      "t": {
       "title": "T",
       "type": "integer"
+     },
+     "view": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "what a player sees now (jackdaw.player_view/1, as jackdaw's Game.player_view): every card a player can see, face-down cards by id and place only, the deck as the deck view shows it, and the last hand's scoring events; when asked for",
+      "title": "View"
      }
     },
     "required": [
@@ -946,6 +978,53 @@
      "message"
     ],
     "title": "Error",
+    "type": "object"
+   },
+   "FactoredAction": {
+    "description": "An action of jackdaw's factored space (``FactoredAction``), given instead of an index:\nany action the episode's env offers, one its action table holds or would hold if it held\nevery legal action instead of a sample. Card selections list hand indices in ascending\norder, as the table does.",
+    "properties": {
+     "action_type": {
+      "description": "jackdaw's ActionType, 0-22",
+      "maximum": 22.0,
+      "minimum": 0.0,
+      "title": "Action Type",
+      "type": "integer"
+     },
+     "card_target": {
+      "anyOf": [
+       {
+        "items": {
+         "exclusiveMaximum": 65535.0,
+         "minimum": 0.0,
+         "type": "integer"
+        },
+        "maxItems": 16,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Card Target"
+     },
+     "entity_target": {
+      "anyOf": [
+       {
+        "exclusiveMaximum": 65535.0,
+        "minimum": 0.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Entity Target"
+     }
+    },
+    "required": [
+     "action_type"
+    ],
+    "title": "FactoredAction",
     "type": "object"
    },
    "Final": {
@@ -1273,8 +1352,17 @@
    "LastStep": {
     "properties": {
      "action": {
-      "title": "Action",
-      "type": "integer"
+      "anyOf": [
+       {
+        "exclusiveMaximum": 65536.0,
+        "minimum": 0.0,
+        "type": "integer"
+       },
+       {
+        "$ref": "#/components/schemas/FactoredAction"
+       }
+      ],
+      "title": "Action"
      },
      "reward": {
       "title": "Reward",
@@ -2725,10 +2813,18 @@
    "StepItem": {
     "properties": {
      "action": {
-      "exclusiveMaximum": 65536.0,
-      "minimum": 0.0,
-      "title": "Action",
-      "type": "integer"
+      "anyOf": [
+       {
+        "exclusiveMaximum": 65536.0,
+        "minimum": 0.0,
+        "type": "integer"
+       },
+       {
+        "$ref": "#/components/schemas/FactoredAction"
+       }
+      ],
+      "description": "an index into the step's action table, or a factored action the env offers",
+      "title": "Action"
      },
      "id": {
       "format": "uuid",
@@ -2853,6 +2949,19 @@
        }
       ],
       "title": "Truncated"
+     },
+     "view": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "what a player sees now (jackdaw.player_view/1, as jackdaw's Game.player_view): every card a player can see, face-down cards by id and place only, the deck as the deck view shows it, and the last hand's scoring events; when asked for",
+      "title": "View"
      }
     },
     "required": [
@@ -2872,6 +2981,12 @@
       "minItems": 1,
       "title": "Steps",
       "type": "array"
+     },
+     "view": {
+      "default": false,
+      "description": "return each stepped episode's player view",
+      "title": "View",
+      "type": "boolean"
      }
     },
     "required": [
@@ -2966,8 +3081,16 @@
       "type": "string"
      },
      "indices": {
+      "description": "the agent's steps: table indices, or factored actions",
       "items": {
-       "type": "integer"
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "$ref": "#/components/schemas/FactoredAction"
+        }
+       ]
       },
       "title": "Indices",
       "type": "array"
@@ -3254,7 +3377,7 @@
  "info": {
   "description": "Hosted, verifiable evaluation for Balatro agents on the jackdaw engine.",
   "title": "Jackdaw Arena",
-  "version": "0.2.0"
+  "version": "0.2.1"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -4437,6 +4560,16 @@
        "format": "uuid",
        "title": "Episode Id",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "view",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "View",
+       "type": "boolean"
       }
      }
     ],

@@ -20,6 +20,17 @@ result = evaluate(model_chooser(model), episodes=500)
 print(result.summary())
 ```
 
+An agent that plans can read the run as a player sees it and give its actions directly, as with jackdaw's `BalatroGymnasiumEnv`: `player_view()` returns jackdaw's player view (no hidden information), and `step_factored()` takes any action the env offers, including the plays a sampled action table leaves out.
+
+```python
+env = ArenaEnv(view=True)
+obs, info = env.reset()
+view = env.player_view()
+obs, reward, terminated, truncated, info = env.step_factored((0, None, (0, 2, 3, 5, 7)))  # PlayHand
+```
+
+`evaluate(choose, ..., view=True)` hands each episode's view to the chooser (`envs[i].view`), and the chooser may return factored actions as well as indices.
+
 Every episode an agent starts counts, and each agent has a fixed budget per track (500 on `red-1`). Every result is verified on the server by replay, and once an episode ends, its seed and full tape are public:
 
 ```bash

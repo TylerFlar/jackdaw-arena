@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import itertools
 import json
 from dataclasses import replace
 
@@ -11,8 +12,10 @@ import pytest
 from jackdaw.env import BalatroGymnasiumEnv, DirectAdapter
 from jackdaw.env.rewards import ShapedReward, blind_progress_reward, sparse_reward
 
+from arena.db import repo
 from arena.engine.live import (
     CorruptTrace,
+    Factored,
     LiveEpisode,
     RunSpec,
     gym_env,
@@ -39,7 +42,7 @@ test_spec.__test__ = False  # a helper, not a test
 def play_random(live: LiveEpisode, rng: np.random.Generator) -> list[int]:
     while live.outcome is None:
         live.apply(int(rng.integers(live.n_actions)))
-    return live.indices
+    return live.steps
 
 
 def flat(obs: dict[str, np.ndarray]) -> bytes:
@@ -120,7 +123,7 @@ def test_rebuild_equals_uninterrupted():
         live = LiveEpisode.start(spec)
         while live.outcome is None:
             live.apply(int(rng.integers(live.n_actions)))
-            again = LiveEpisode.rebuild(spec, live.indices)
+            again = LiveEpisode.rebuild(spec, live.steps)
             assert (again.t, again.obs, again.n_actions) == (live.t, live.obs, live.n_actions)
             assert again.last == live.last
             assert again.tape == live.tape
@@ -145,7 +148,7 @@ def test_rebuild_rejects_a_trace_past_the_end():
     live = LiveEpisode.start(spec)
     play_random(live, np.random.default_rng(5))
     with pytest.raises(CorruptTrace):
-        LiveEpisode.rebuild(spec, [*live.indices, 0])
+        LiveEpisode.rebuild(spec, [*live.steps, 0])
 
 
 def test_replay_stats_match_a_natural_truncation():
@@ -259,3 +262,82 @@ def test_refused_cut_records_the_attempt_off_the_tape():
     assert out is not None and out.end_reason == "refused"
     assert out.refused == "fake refused" and json.dumps(out.attempted)
     assert len(live.tape) == 1
+
+
+# --- factored steps and the player view ---------------------------------------------------------
+
+
+def _sampled_out_play(live: LiveEpisode) -> Factored | None:
+    """A play the env offers that the current table doesn't hold, if any."""
+    table = {tuple(p[2]) for p in live.env.action_table() if p[0] == 0 and p[2] is not None}
+    for k in range(5, 0, -1):
+        for cards in itertools.combinations(range(8), k):
+            if cards not in table and live.legal(Factored(0, None, cards)):
+                return Factored(0, None, cards)
+    return None
+
+
+def test_factored_steps_rebuild_and_verify():
+    """A mix of indices and factored actions, a play the table left out among them: rebuilt
+    from its steps, the episode is the same at every t, and its tape verifies."""
+    rng = np.random.default_rng(12)
+    spec = test_spec(60)
+    live = LiveEpisode.start(spec)
+    took_sampled_out = False
+    while live.outcome is None:
+        play = _sampled_out_play(live)
+        if play is not None and rng.random() < 0.5:
+            took_sampled_out = True
+            live.apply(play)
+        elif rng.random() < 0.3:
+            t, e, cards = live.env.action(int(rng.integers(live.n_actions)))
+            live.apply(Factored(t, e, None if cards is None else tuple(cards)))
+        else:
+            live.apply(int(rng.integers(live.n_actions)))
+    assert took_sampled_out
+    assert any(isinstance(a, Factored) for a in live.steps)
+    again = LiveEpisode.rebuild(spec, live.steps)
+    assert again.obs == live.obs and again.last == live.last
+    assert again.env.game().state_hash() == live.env.game().state_hash()
+    assert live.outcome is not None and live.outcome.verified
+    assert verify_tape(spec, live.tape) == live.outcome.final_state_hash
+    assert replay_stats(spec, live.steps).state_hash == live.outcome.final_state_hash
+
+
+def test_a_step_the_env_doesnt_offer_is_illegal():
+    live = LiveEpisode.start(test_spec(61))
+    assert live.legal(Factored(2))  # SelectBlind
+    assert not live.legal(Factored(0, None, (0, 1)))  # no hand yet
+    live.apply(Factored(2))
+    assert live.legal(Factored(0, None, (0, 1)))
+    assert not live.legal(Factored(0, None, (1, 0)))  # selections are ascending
+    with pytest.raises(CorruptTrace):
+        LiveEpisode.rebuild(test_spec(61), [Factored(0, None, (0, 1))])
+
+
+def test_traces_pack_both_kinds_of_steps():
+    steps = [3, Factored(0, None, (0, 2, 7)), 0, Factored(11, 1, None), Factored(14, 0, ()), 499]
+    trace = b"".join(repo.pack_step(a) for a in steps)
+    assert repo.unpack_trace(trace) == steps
+    # Traces from before factored steps are indices alone, and read as before.
+    assert repo.unpack_trace(b"\x03\x00\x01\x00") == [3, 1]
+    with pytest.raises(CorruptTrace):
+        repo.unpack_trace(repo.pack_step(Factored(0, None, (0, 1)))[:-2])
+
+
+def test_the_player_view():
+    """The view the env makes: the run as a player sees it, with the last hand's events, its ids
+    keyed from the secret sampler seed."""
+    spec = test_spec(62)
+    live = LiveEpisode.start(spec)
+    live.apply(Factored(2))
+    hand = live.view()["hand"]
+    live.apply(Factored(0, None, (0, 1, 2)))
+    v = live.view()
+    assert v["format"] == "jackdaw.player_view/1"
+    assert v["last_play"]["played"] == [c["id"] for c in hand[:3]]
+    assert spec.seed not in json.dumps(v)
+    other = LiveEpisode.start(replace(spec, rng_seed=spec.rng_seed + 1))
+    other.apply(Factored(2))
+    assert [c["front"] for c in other.view()["hand"]] == [c["front"] for c in hand]
+    assert [c["id"] for c in other.view()["hand"]] != [c["id"] for c in hand]

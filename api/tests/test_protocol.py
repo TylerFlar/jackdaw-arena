@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import itertools
 import uuid
 
 import numpy as np
@@ -37,7 +38,7 @@ def create(client: TestClient, token: str, n: int = 1, track: str = "red-1", **b
     return r.json()["episodes"]
 
 
-def step(client: TestClient, token: str, *items: tuple[str, int, int]) -> list[dict]:
+def step(client: TestClient, token: str, *items: tuple[str, int, int | dict]) -> list[dict]:
     r = client.post(
         "/api/v1/step",
         json={"steps": [{"id": i, "t": t, "action": a} for i, t, a in items]},
@@ -355,3 +356,126 @@ def test_spec_describes_the_local_env(client):
     for f in spec["obs"]["fields"]:
         assert tuple(f["shape"]) == local.observation_space[f["name"]].shape
     assert spec["tracks"][0]["key"] == "red-1"
+
+
+# --- factored actions and the player view ------------------------------------------------------
+
+
+def _dealt(client: TestClient, token: str, **body) -> dict:
+    """A running episode with its first hand dealt (SelectBlind as a factored action)."""
+    (ep,) = create(client, token, **body)
+    (r,) = step(client, token, (ep["id"], 0, {"action_type": 2}))
+    assert r["ok"] and r["t"] == 1, r
+    return {**ep, **r}
+
+
+def test_a_factored_action_reaches_a_play_the_table_left_out(make_app, agents, engine):
+    """jackdaw-arena#18: with 8 hand cards the table holds 200 of the 218 plays. A factored
+    action reaches the others, the episode replays in a process that never saw it, and the
+    trace keeps the step as it was given."""
+    from arena.db import repo
+    from arena.engine.live import LiveEpisode
+
+    _, token = agents.agent()
+    with TestClient(make_app()) as one:
+        ep = _dealt(one, token)
+        with engine.connect() as conn:
+            row = repo.get_episode(conn, uuid.UUID(ep["id"]))
+        assert row is not None
+        table = LiveEpisode.rebuild(row.spec, row.steps).env.action_table()
+        listed = {tuple(c) for t, _, c in table if t == 0}
+        every = [c for k in range(1, 6) for c in itertools.combinations(range(8), k)]
+        missing = [c for c in every if c not in listed]
+        assert len(missing) == 18
+        (taken,) = step(one, token, (ep["id"], 1, {"action_type": 0, "card_target": missing[0]}))
+        assert taken["ok"] and taken["t"] == 2, taken
+    with TestClient(make_app()) as two:
+        resumed = two.get(f"/api/v1/episodes/{ep['id']}", headers=bearer(token)).json()
+        assert resumed["t"] == 2 and resumed["obs"] == taken["obs"]
+        assert resumed["last"]["action"] == {
+            "action_type": 0, "entity_target": None, "card_target": list(missing[0]),
+        }  # fmt: skip
+        (next_,) = step(two, token, (ep["id"], 2, 0))
+        assert next_["ok"]
+    with engine.connect() as conn:
+        row = repo.get_episode(conn, uuid.UUID(ep["id"]))
+    assert row is not None and [type(a).__name__ for a in row.steps] == [
+        "Factored",
+        "Factored",
+        "int",
+    ]
+
+
+def test_a_factored_play_off_the_table_is_offered(client, agents):
+    """Every play of the hand is legal as a factored action, in the table or not."""
+    _, token = agents.agent()
+    ep = _dealt(client, token)
+    (r,) = step(client, token, (ep["id"], 1, {"action_type": 0, "card_target": [0, 1, 2, 3, 4]}))
+    assert r["ok"] and r["t"] == 2
+
+
+def test_a_factored_action_the_env_doesnt_offer_is_illegal(client, agents):
+    _, token = agents.agent()
+    ep = _dealt(client, token)
+    for bad in (
+        {"action_type": 0, "card_target": [1, 0]},  # not ascending
+        {"action_type": 0, "card_target": [0, 1, 2, 3, 4, 5]},
+        {"action_type": 4},  # CashOut while choosing a hand
+        {"action_type": 8, "entity_target": 0},  # BuyCard
+    ):
+        (r,) = step(client, token, (ep["id"], 1, bad))
+        assert r["ok"] is False and r["error"] == "illegal_action" and r["t"] == 1, bad
+    r = client.post(
+        "/api/v1/step",
+        json={"steps": [{"id": ep["id"], "t": 1, "action": {"action_type": 23}}]},
+        headers=bearer(token),
+    )
+    assert r.status_code == 422
+
+
+def test_a_factored_retry_returns_the_same_response(client, agents):
+    _, token = agents.agent()
+    ep = _dealt(client, token)
+    play = {"action_type": 0, "card_target": [0, 2]}
+    (first,) = step(client, token, (ep["id"], 1, play))
+    (again,) = step(client, token, (ep["id"], 1, play))
+    assert first["ok"] and first == again
+    (other,) = step(client, token, (ep["id"], 1, {"action_type": 0, "card_target": [1, 2]}))
+    assert other["ok"] is False and other["error"] == "conflict"
+
+
+def test_the_player_view_on_request(client, agents):
+    _, token = agents.agent()
+    (ep,) = create(client, token, view=True)
+    assert ep["view"]["format"] == "jackdaw.player_view/1" and ep["view"]["phase"] == "blind_select"
+    r = client.post(
+        "/api/v1/step",
+        json={"steps": [{"id": ep["id"], "t": 0, "action": {"action_type": 2}}], "view": True},
+        headers=bearer(token),
+    ).json()["results"][0]
+    hand = r["view"]["hand"]
+    assert len(hand) == 8 and all(c["front"] for c in hand)
+    r = client.post(
+        "/api/v1/step",
+        json={
+            "steps": [{"id": ep["id"], "t": 1, "action": {"action_type": 0, "card_target": [0]}}],
+            "view": True,
+        },
+        headers=bearer(token),
+    ).json()["results"][0]
+    assert r["view"]["last_play"]["played"] == [hand[0]["id"]]
+    (plain,) = step(client, token, (ep["id"], 2, 0))
+    assert plain["view"] is None
+    got = client.get(f"/api/v1/episodes/{ep['id']}?view=true", headers=bearer(token)).json()
+    assert got["view"]["format"] == "jackdaw.player_view/1"
+    assert client.get(f"/api/v1/episodes/{ep['id']}", headers=bearer(token)).json()["view"] is None
+
+
+def test_the_tape_lists_factored_steps(client, agents):
+    _, token = agents.agent()
+    ep = _dealt(client, token)
+    final = client.post(f"/api/v1/episodes/{ep['id']}/forfeit", headers=bearer(token)).json()
+    assert final["end_reason"] == "forfeit" and final["verified"]
+    tape = client.get(f"/api/episodes/{ep['id']}/tape").json()
+    assert tape["indices"] == [{"action_type": 2, "entity_target": None, "card_target": None}]
+    assert tape["tape"] == [["SelectBlind"]]
