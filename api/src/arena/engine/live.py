@@ -1,8 +1,11 @@
 """A running episode, and how to rebuild one from what the database keeps.
 
-The database stores a run's spec (seed, sampler seed, track settings) and the index of every
-action the agent took. That is enough to rebuild the Gym env exactly. ``_core.GymEnv`` is
-deterministic given its spec and ``rng_seed``, including the per-step action table it samples.
+The database stores a run's spec (seed, sampler seed, track settings) and every action the agent
+took: an index into the step's action table, or a factored action the env offers (one the table
+would hold if it held every legal action instead of a sample). That is enough to rebuild the Gym
+env exactly. ``_core.GymEnv`` is deterministic given its spec and ``rng_seed``, including the
+per-step action table it samples, and a factored step draws the next table as the index naming
+the same action would.
 
 Next to the env runs a *shadow* ``Game``, stepped with each action's canonical engine form. Those
 JSON "tape" lines are what the episode records, and anyone can replay them with
@@ -16,7 +19,7 @@ import asyncio
 import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, NamedTuple
 
 from jackdaw import _core
 
@@ -26,7 +29,45 @@ _NEVER_CATCH = (KeyboardInterrupt, SystemExit, GeneratorExit, asyncio.CancelledE
 
 
 class CorruptTrace(RuntimeError):
-    """The stored indices don't replay: wrong spec, a different engine, or a damaged row."""
+    """The stored steps don't replay: wrong spec, a different engine, or a damaged row."""
+
+
+class Factored(NamedTuple):
+    """An action of jackdaw's factored space (``FactoredAction``), as an agent may give it
+    instead of an index: legal when the env ``offers`` it."""
+
+    action_type: int
+    entity_target: int | None = None
+    card_target: tuple[int, ...] | None = None
+
+    def parts(self) -> tuple[int, int | None, list[int] | None]:
+        cards = None if self.card_target is None else list(self.card_target)
+        return self.action_type, self.entity_target, cards
+
+    def as_dict(self) -> dict[str, Any]:
+        cards = None if self.card_target is None else list(self.card_target)
+        return {
+            "action_type": self.action_type,
+            "entity_target": self.entity_target,
+            "card_target": cards,
+        }
+
+
+Step = int | Factored
+"""What an agent takes: an index into the action table, or a factored action."""
+
+
+def env_step(env: Any, a: Step) -> Any:
+    """Take ``a`` in a ``_core.GymEnv``, a refusal cutting the episode: ``step`` for an index,
+    ``step_factored`` for a factored action."""
+    if isinstance(a, Factored):
+        return env.step_factored(*a.parts(), True)
+    return env.step(a, True)
+
+
+def step_json(a: Step) -> Any:
+    """A step as the protocol writes it: the index, or the factored action's object."""
+    return a.as_dict() if isinstance(a, Factored) else a
 
 
 @dataclass(frozen=True)
@@ -107,9 +148,9 @@ class LiveEpisode:
     n_actions: int
     factory: EnvFactory = gym_env
     t: int = 0
-    indices: list[int] = field(default_factory=list)
+    steps: list[Step] = field(default_factory=list)
     tape: list[str] = field(default_factory=list)  # JSON text, one engine action per line
-    last: tuple[int, StepResult] | None = None  # the last action and its result, for retries
+    last: tuple[Step, StepResult] | None = None  # the last action and its result, for retries
     outcome: Outcome | None = None
     diverged: bool = False  # the shadow refused an action the env took: an engine bug
     engine_error: str | None = None  # what the engine raised, kept for operators only
@@ -117,44 +158,62 @@ class LiveEpisode:
     @classmethod
     def start(cls, spec: RunSpec, factory: EnvFactory = gym_env) -> LiveEpisode:
         env = factory(spec, spec.max_steps)
+        # Every play records its scoring, for the player view's ``last_play``. It never changes
+        # a run.
+        env.record_scoring = True
         obs, n_actions = env.reset(spec.back, spec.stake, spec.seed, spec.challenge, spec.rng_seed)
         return cls(spec, env, new_game(spec), bytes(obs), n_actions, factory)
 
     @classmethod
     def rebuild(
-        cls, spec: RunSpec, indices: Sequence[int], factory: EnvFactory = gym_env
+        cls, spec: RunSpec, steps: Sequence[Step], factory: EnvFactory = gym_env
     ) -> LiveEpisode:
-        """The episode after replaying ``indices``. The last replayed step's result is ``last``,
+        """The episode after replaying ``steps``. The last replayed step's result is ``last``,
         so a retried request gets the response it lost, from any process."""
         live = cls.start(spec, factory)
-        for a in indices:
+        for a in steps:
             if live.outcome is not None:
                 raise CorruptTrace(f"steps recorded after the episode ended (t={live.t})")
-            if not 0 <= a < live.n_actions:
-                raise CorruptTrace(f"index {a} at t={live.t} is outside the table")
+            if not live.legal(a):
+                raise CorruptTrace(f"step {a} at t={live.t} isn't legal there")
             live.apply(a)
         return live
 
-    def apply(self, a: int) -> StepResult:
-        """Take action ``a`` of the current table. The caller checks ``0 <= a < n_actions`` and
-        that the episode is still running."""
+    def legal(self, a: Step) -> bool:
+        """Whether the episode takes ``a`` now: an index into the current table, or a factored
+        action the env offers. Nothing is legal once it has ended."""
+        if self.outcome is not None:
+            return False
+        if isinstance(a, Factored):
+            return bool(self.env.offers(*a.parts()))
+        return 0 <= a < self.n_actions
+
+    def view(self) -> dict[str, Any]:
+        """What a player sees of the run now (``jackdaw.player_view/1``), its cards named under
+        a key drawn from the secret sampler seed."""
+        return json.loads(self.env.player_view())
+
+    def apply(self, a: Step) -> StepResult:
+        """Take ``a``. The caller checks that it is ``legal``."""
         if self.outcome is not None:
             raise RuntimeError("the episode has ended")
-        parts = self.env.action(a)  # (action_type, entity_target, card_target)
+        if isinstance(a, Factored):
+            parts: Any = a.parts()
+        else:
+            parts = self.env.action(a)  # (action_type, entity_target, card_target)
         try:
             tape: str | None = self.shadow.factored_to_engine(*parts)
         except ValueError:
             tape = None  # no engine action stands for it here: the env will refuse it
         try:
-            obs, reward, term, trunc, n_actions, episode, not_ported, refused = self.env.step(
-                a, True
-            )
+            out = env_step(self.env, a)
+            obs, reward, term, trunc, n_actions, episode, not_ported, refused = out
         except _NEVER_CATCH:
             raise
         except BaseException as exc:  # noqa: BLE001 - includes PyO3 PanicException
             return self._engine_error(a, parts, tape, exc)
 
-        self.indices.append(a)
+        self.steps.append(a)
         self.t += 1
         took = refused is None and not_ported is None
         if took:
@@ -185,7 +244,7 @@ class LiveEpisode:
         replay of its steps."""
         if self.outcome is not None:
             return self.outcome
-        stats = replay_stats(self.spec, self.indices, self.factory)
+        stats = replay_stats(self.spec, self.steps, self.factory)
         shadow_hash = self.shadow.state_hash()
         self.outcome = Outcome(
             reason, stats.won, stats.ante_reached, stats.rounds_beaten, self.t, shadow_hash,
@@ -233,12 +292,14 @@ class LiveEpisode:
             refused=refused, not_ported=not_ported, attempted=attempted,
         )  # fmt: skip
 
-    def _engine_error(self, a: int, parts: Any, tape: str | None, exc: BaseException) -> StepResult:
+    def _engine_error(
+        self, a: Step, parts: Any, tape: str | None, exc: BaseException
+    ) -> StepResult:
         """The engine raised on a step: the env is in an undefined state. Record the step, end the
         episode, and score it from a clean replay of the steps before."""
-        stats = replay_stats(self.spec, self.indices, self.factory)
+        stats = replay_stats(self.spec, self.steps, self.factory)
         shadow_hash = self.shadow.state_hash()
-        self.indices.append(a)
+        self.steps.append(a)
         self.t += 1
         self.outcome = Outcome(
             "engine_error", stats.won, stats.ante_reached, stats.rounds_beaten, self.t,
@@ -251,21 +312,21 @@ class LiveEpisode:
         return result
 
 
-def replay_stats(spec: RunSpec, indices: Sequence[int], factory: EnvFactory = gym_env) -> Stats:
-    """The authoritative stats of an episode stopped after ``indices``.
+def replay_stats(spec: RunSpec, steps: Sequence[Step], factory: EnvFactory = gym_env) -> Stats:
+    """The authoritative stats of an episode stopped after ``steps``.
 
     ``_core.GymEnv`` only reports an episode's best ante and blinds beaten when it ends, so
-    replay the indices in a fresh env capped at ``len(indices)`` steps: its last step truncates
+    replay the steps in a fresh env capped at ``len(steps)`` steps: its last step truncates
     and reports them.
     """
-    t = len(indices)
+    t = len(steps)
     if t == 0:
         return Stats(1, 0, False, new_game(spec).state_hash())
     env = factory(spec, t)
     env.reset(spec.back, spec.stake, spec.seed, spec.challenge, spec.rng_seed)
     episode = None
-    for k, a in enumerate(indices):
-        _, _, term, trunc, _, episode, _, _ = env.step(a, True)
+    for k, a in enumerate(steps):
+        _, _, term, trunc, _, episode, _, _ = env_step(env, a)
         if (term or trunc) != (k == t - 1):
             raise CorruptTrace(f"replay ended at step {k + 1}, not at {t}")
     assert episode is not None

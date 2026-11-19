@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from arena import schemas
 from arena.auth.deps import AgentDep
 from arena.db import repo
+from arena.engine.live import Factored, Step
 from arena.engine.spec import spec_document
 from arena.services.episodes import EpisodeService, StepItem
 
@@ -59,15 +60,22 @@ def create_episodes(
     body: schemas.EpisodeCreate, request: Request, agent: AgentDep
 ) -> dict[str, Any]:
     episodes = _service(request).create(
-        agent, body.track, body.keys, body.reward.kind, body.reward.weights
+        agent, body.track, body.keys, body.reward.kind, body.reward.weights, body.view
     )
     return {"episodes": episodes}
 
 
+def _step_of(action: int | schemas.FactoredAction) -> Step:
+    if isinstance(action, schemas.FactoredAction):
+        cards = None if action.card_target is None else tuple(action.card_target)
+        return Factored(action.action_type, action.entity_target, cards)
+    return action
+
+
 @router.post("/step", response_model=schemas.StepResponse)
 def step(body: schemas.StepRequest, request: Request, agent: AgentDep) -> dict[str, Any]:
-    items = [StepItem(s.id, s.t, s.action) for s in body.steps]
-    return {"results": _service(request).step(agent, items)}
+    items = [StepItem(s.id, s.t, _step_of(s.action)) for s in body.steps]
+    return {"results": _service(request).step(agent, items, body.view)}
 
 
 @router.get("/episodes", response_model=list[schemas.RunningEpisode])
@@ -78,8 +86,10 @@ def running(
 
 
 @router.get("/episodes/{episode_id}", response_model=schemas.EpisodeResume)
-def get_episode(episode_id: uuid.UUID, request: Request, agent: AgentDep) -> dict[str, Any]:
-    return _service(request).get(agent, episode_id)
+def get_episode(
+    episode_id: uuid.UUID, request: Request, agent: AgentDep, view: bool = False
+) -> dict[str, Any]:
+    return _service(request).get(agent, episode_id, view)
 
 
 @router.post("/episodes/{episode_id}/forfeit", response_model=schemas.Final)

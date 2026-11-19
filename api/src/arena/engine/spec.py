@@ -39,7 +39,7 @@ SEASONS: dict[str, Season] = {
     "0.2.0": Season(
         "0.2.0",
         "Season 1",
-        ("0.2.0", "0.2.1", "0.2.2", "0.2.3", "0.2.4", "0.2.5", "0.2.6", "0.2.7", "0.3.0"),
+        ("0.2.0", "0.2.1", "0.2.2", "0.2.3", "0.2.4", "0.2.5", "0.2.6", "0.2.7", "0.3.0", "0.3.1"),
     ),
 }
 SEASON: str = "0.2.0"
@@ -58,6 +58,7 @@ def replayable(season: str) -> bool:
 
 
 OBS_LEN: int = _core.GYM_OBS_LEN
+PLAYER_VIEW: str = "jackdaw.player_view/1"
 MAX_ACTIONS: int = _core.MAX_ACTIONS
 OBS_DTYPE = "<f4"
 
@@ -117,6 +118,9 @@ def spec_document(tracks: list[dict[str, Any]], limits: dict[str, Any]) -> dict[
         "obs": {"length": OBS_LEN, "dtype": OBS_DTYPE, "fields": obs_fields()},
         "max_actions": MAX_ACTIONS,
         "action_types": action_types(),
+        # A step takes an index or a factored action; a view is jackdaw's player view.
+        "factored_actions": True,
+        "player_view": PLAYER_VIEW,
         "rewards": {
             "kinds": list(REWARD_KINDS),
             "shaped_weights": [{"name": n, "default": d} for n, d in SHAPED_WEIGHTS],

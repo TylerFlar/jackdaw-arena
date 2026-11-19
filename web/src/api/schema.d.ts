@@ -743,6 +743,12 @@ export interface components {
              * @default red-1
              */
             track?: string;
+            /**
+             * View
+             * @description return each running episode's player view
+             * @default false
+             */
+            view?: boolean;
         };
         /** EpisodePage */
         EpisodePage: {
@@ -782,6 +788,13 @@ export interface components {
             status: string;
             /** T */
             t: number;
+            /**
+             * View
+             * @description what a player sees now (jackdaw.player_view/1, as jackdaw's Game.player_view): every card a player can see, face-down cards by id and place only, the deck as the deck view shows it, and the last hand's scoring events; when asked for
+             */
+            view?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** EpisodeState */
         EpisodeState: {
@@ -810,6 +823,13 @@ export interface components {
             status: string;
             /** T */
             t: number;
+            /**
+             * View
+             * @description what a player sees now (jackdaw.player_view/1, as jackdaw's Game.player_view): every card a player can see, face-down cards by id and place only, the deck as the deck view shows it, and the last hand's scoring events; when asked for
+             */
+            view?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** EpisodeSummary */
         EpisodeSummary: {
@@ -855,6 +875,24 @@ export interface components {
             error: string;
             /** Message */
             message: string;
+        };
+        /**
+         * FactoredAction
+         * @description An action of jackdaw's factored space (``FactoredAction``), given instead of an index:
+         *     any action the episode's env offers, one its action table holds or would hold if it held
+         *     every legal action instead of a sample. Card selections list hand indices in ascending
+         *     order, as the table does.
+         */
+        FactoredAction: {
+            /**
+             * Action Type
+             * @description jackdaw's ActionType, 0-22
+             */
+            action_type: number;
+            /** Card Target */
+            card_target?: number[] | null;
+            /** Entity Target */
+            entity_target?: number | null;
         };
         /**
          * Final
@@ -948,7 +986,7 @@ export interface components {
         /** LastStep */
         LastStep: {
             /** Action */
-            action: number;
+            action: number | components["schemas"]["FactoredAction"];
             /** Reward */
             reward: number;
             /** T */
@@ -1413,8 +1451,11 @@ export interface components {
         };
         /** StepItem */
         StepItem: {
-            /** Action */
-            action: number;
+            /**
+             * Action
+             * @description an index into the step's action table, or a factored action the env offers
+             */
+            action: number | components["schemas"]["FactoredAction"];
             /**
              * Id
              * Format: uuid
@@ -1450,11 +1491,24 @@ export interface components {
             terminated?: boolean | null;
             /** Truncated */
             truncated?: boolean | null;
+            /**
+             * View
+             * @description what a player sees now (jackdaw.player_view/1, as jackdaw's Game.player_view): every card a player can see, face-down cards by id and place only, the deck as the deck view shows it, and the last hand's scoring events; when asked for
+             */
+            view?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** StepRequest */
         StepRequest: {
             /** Steps */
             steps: components["schemas"]["StepItem"][];
+            /**
+             * View
+             * @description return each stepped episode's player view
+             * @default false
+             */
+            view?: boolean;
         };
         /** StepResponse */
         StepResponse: {
@@ -1488,8 +1542,11 @@ export interface components {
             format: string;
             /** Id */
             id: string;
-            /** Indices */
-            indices: number[];
+            /**
+             * Indices
+             * @description the agent's steps: table indices, or factored actions
+             */
+            indices: (number | components["schemas"]["FactoredAction"])[];
             /** Max Free Moves */
             max_free_moves: number | null;
             /** Max Steps */
@@ -2327,7 +2384,9 @@ export interface operations {
     };
     get_episode_api_v1_episodes__episode_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                view?: boolean;
+            };
             header?: never;
             path: {
                 episode_id: string;
