@@ -5,6 +5,9 @@ Same observation dict, ``Discrete(500)`` actions, ``action_masks()`` for Maskabl
 same ``balatro/*`` keys in the final step's info. Two differences come from evaluating on the
 server: the seed is chosen there (``reset(seed=...)`` is ignored), and every episode counts.
 Resetting or closing in the middle of an episode forfeits it, scored as far as it got.
+
+As with ``BalatroGymnasiumEnv``, ``step_factored(action)`` takes an action instead of an index
+(one the table's sample may have left out), and ``player_view()`` returns what a player sees.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from typing import Any
 import gymnasium
 import numpy as np
 
-from jackdaw_arena.client import ArenaClient
+from jackdaw_arena.client import ArenaClient, wire_action
 
 
 class ArenaEnv(gymnasium.Env):
@@ -27,10 +30,15 @@ class ArenaEnv(gymnasium.Env):
         track: str = "red-1",
         reward: str = "sparse",
         weights: dict[str, float] | None = None,
+        view: bool = False,
     ) -> None:
+        """``view``: every reset and step also fetches the player view, for :meth:`player_view`
+        (which otherwise asks the server for it)."""
         super().__init__()
         self.client = client or ArenaClient()
         self.track, self.reward, self.weights = track, reward, weights
+        self.view = view
+        self._view: dict[str, Any] | None = None
         spec = self.client.spec()
         self.spec = spec
         self.observation_space = spec.observation_space()
@@ -56,21 +64,48 @@ class ArenaEnv(gymnasium.Env):
                 "resetting mid-episode forfeits it (every Arena episode counts)", stacklevel=2
             )
             self.client.forfeit(self.episode_id)
-        (ep,) = self.client.create(1, self.track, self.reward, self.weights)
+        (ep,) = self.client.create(1, self.track, self.reward, self.weights, view=self.view)
         self.episode_id = ep["id"]
         self._t, self._n_actions, self._running = ep["t"], ep["n_actions"], True
+        self._view = ep.get("view")
         return self.spec.decode(ep["obs"]), {
             "action_mask": self.action_masks(),
             "arena/episode_id": self.episode_id,
         }
 
     def step(self, action: int) -> tuple[dict[str, np.ndarray], float, bool, bool, dict[str, Any]]:
+        return self._step(int(action))
+
+    def step_factored(
+        self, action: Any
+    ) -> tuple[dict[str, np.ndarray], float, bool, bool, dict[str, Any]]:
+        """:meth:`step` with a factored action instead of an index (jackdaw's
+        ``FactoredAction``, a mapping, or ``(action_type, entity_target, card_target)``): any
+        action the env offers, whether or not the table's sample holds it, as
+        ``BalatroGymnasiumEnv.step_factored``. One it doesn't offer raises ``RuntimeError``
+        (``illegal_action``) and changes nothing."""
+        return self._step(wire_action(action))
+
+    def player_view(self) -> dict[str, Any]:
+        """What a player sees of the run now, as ``BalatroGymnasiumEnv.player_view()`` returns
+        it (``jackdaw.player_view/1``), with the last hand's scoring events."""
+        if self._view is None:
+            if not self._running or self.episode_id is None:
+                raise RuntimeError("no view: the episode has ended (use view=True to keep one)")
+            self._view = self.client.get(self.episode_id, view=True)["view"]
+        assert self._view is not None
+        return self._view
+
+    def _step(
+        self, action: int | dict[str, Any]
+    ) -> tuple[dict[str, np.ndarray], float, bool, bool, dict[str, Any]]:
         if not self._running or self.episode_id is None:
             raise RuntimeError("call reset() first: the episode has ended")
-        (r,) = self.client.step([(self.episode_id, self._t, int(action))])
+        (r,) = self.client.step([(self.episode_id, self._t, action)], view=self.view)
         if not r["ok"]:
             raise RuntimeError(f"step refused: {r['error']} (t={r.get('t')})")
         self._t, self._n_actions = r["t"], r["n_actions"]
+        self._view = r.get("view")
         info: dict[str, Any] = {"action_mask": None, "arena/episode_id": self.episode_id}
         final = r["final"]
         if final is not None:

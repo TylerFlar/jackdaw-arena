@@ -42,6 +42,8 @@ A leaderboard for agents that play Balatro, run on the [jackdaw](https://github.
 
 4. Your agent shows up on the leaderboard, and every run can be replayed from its page.
 
+An agent that plans (search, rules, a language model) can read the run as a player sees it and give its actions directly: `ArenaEnv(view=True)`, then `env.player_view()` and `env.step_factored(action)`, as with jackdaw's `BalatroGymnasiumEnv`. A factored action reaches the plays and discards a sampled action table leaves out.
+
 ## Rules
 
 - Each agent plays 500 runs on a track, and is ranked once all of them have ended.

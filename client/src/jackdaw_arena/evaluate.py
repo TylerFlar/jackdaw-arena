@@ -3,7 +3,9 @@
 The chooser has the signature of ``examples/balatro_sb3.py``'s choosers in the jackdaw repo,
 ``choose(envs, batch_obs, masks) -> actions``, so the same function evaluates locally and
 here. ``model_chooser(MaskablePPO.load(...))`` works unchanged. ``envs`` holds one handle
-per episode (its ``id`` and ``t``); there is no local run to read.
+per episode (its ``id`` and ``t``, and with ``view=True`` its player ``view``); there is no
+local run to read. An action is an index into the episode's table, or a factored action
+(``jackdaw_arena.client.wire_action``).
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from typing import Any
 
 import numpy as np
 
-from jackdaw_arena.client import ArenaClient
+from jackdaw_arena.client import ArenaClient, wire_action
 
 
 @dataclass
@@ -26,6 +28,7 @@ class Handle:
     n_actions: int
     obs: dict[str, np.ndarray]
     reward: float = 0.0
+    view: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -69,7 +72,7 @@ class Evaluation:
         }
 
 
-Chooser = Callable[[list[Handle], dict[str, np.ndarray], np.ndarray], Sequence[int]]
+Chooser = Callable[[list[Handle], dict[str, np.ndarray], np.ndarray], Sequence[Any]]
 
 
 def random_chooser(seed: int = 0) -> Chooser:
@@ -90,12 +93,13 @@ def evaluate(
     batch: int = 32,
     client: ArenaClient | None = None,
     progress: bool = True,
+    view: bool = False,
 ) -> Evaluation:
     """Play ``episodes`` episodes, ``batch`` at a time, and return their results.
 
     Episodes this agent left running (an interrupted run) are adopted first, so no budget is
     lost. Only as many new episodes are started as are needed, and every started episode is
-    played to its end.
+    played to its end. ``view``: each handle carries its episode's player view.
     """
     client = client or ArenaClient()
     spec = client.spec()
@@ -103,11 +107,12 @@ def evaluate(
     active: dict[str, Handle] = {}
 
     for r in [r for r in client.running() if r["track"] == track][:episodes]:
-        state = client.get(r["id"])
+        state = client.get(r["id"], view=view)
         if state["status"] == "running":
             active[r["id"]] = Handle(
-                r["id"], state["t"], state["n_actions"], spec.decode(state["obs"])
-            )
+                r["id"], state["t"], state["n_actions"], spec.decode(state["obs"]),
+                view=state.get("view"),
+            )  # fmt: skip
     to_start = episodes - len(active)
 
     def record(eid: str, h: Handle, step: dict[str, Any] | None, final: dict[str, Any]) -> None:
@@ -133,11 +138,12 @@ def evaluate(
         if len(active) < batch and to_start > 0:
             n = min(batch - len(active), to_start, 64)
             keys = [str(uuid.uuid4()) for _ in range(n)]
-            for ep in client.create(n, track, reward, keys=keys):
+            for ep in client.create(n, track, reward, keys=keys, view=view):
                 if ep["status"] == "running":
                     active[ep["id"]] = Handle(
-                        ep["id"], ep["t"], ep["n_actions"], spec.decode(ep["obs"])
-                    )
+                        ep["id"], ep["t"], ep["n_actions"], spec.decode(ep["obs"]),
+                        view=ep.get("view"),
+                    )  # fmt: skip
                 elif ep.get("final"):
                     record(ep["id"], Handle(ep["id"], ep["t"], 0, {}), None, ep["final"])
             to_start -= n
@@ -147,9 +153,12 @@ def evaluate(
         handles = [active[i] for i in ids]
         obs = {k: np.stack([h.obs[k] for h in handles]) for k in handles[0].obs}
         masks = np.stack([spec.mask(h.n_actions) for h in handles])
-        actions = [int(a) for a in np.asarray(choose(handles, obs, masks)).reshape(-1)]
+        chosen = choose(handles, obs, masks)
+        if isinstance(chosen, np.ndarray):
+            chosen = chosen.reshape(-1).tolist()
+        actions = [wire_action(a) for a in chosen]
         steps = [(i, active[i].t, a) for i, a in zip(ids, actions, strict=True)]
-        for i, r in zip(ids, client.step(steps), strict=True):
+        for i, r in zip(ids, client.step(steps, view=view), strict=True):
             h = active[i]
             if r["ok"]:
                 h.reward += float(r["reward"])
@@ -158,14 +167,15 @@ def evaluate(
                     del active[i]
                 else:
                     h.t, h.n_actions, h.obs = r["t"], r["n_actions"], spec.decode(r["obs"])
+                    h.view = r.get("view")
             elif r["error"] == "ended":
                 record(i, h, None, r.get("final") or client.get(i)["final"])
                 del active[i]
             elif r["error"] == "conflict":
-                state = client.get(i)  # another process moved it on: resync
+                state = client.get(i, view=view)  # another process moved it on: resync
                 if state["status"] == "running":
                     h.t, h.n_actions = state["t"], state["n_actions"]
-                    h.obs = spec.decode(state["obs"])
+                    h.obs, h.view = spec.decode(state["obs"]), state.get("view")
                 else:
                     record(i, h, None, state["final"])
                     del active[i]

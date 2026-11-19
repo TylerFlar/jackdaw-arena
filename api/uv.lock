@@ -55,11 +55,11 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "itsdangerous" },
-    { name = "jackdaw", version = "0.3.0", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-macosx_10_12_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "jackdaw", version = "0.3.0", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-macosx_11_0_arm64.whl" }, marker = "platform_machine != 'x86_64' and sys_platform != 'linux' and sys_platform != 'win32'" },
-    { name = "jackdaw", version = "0.3.0", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-manylinux_2_28_aarch64.whl" }, marker = "platform_machine != 'x86_64' and sys_platform == 'linux'" },
-    { name = "jackdaw", version = "0.3.0", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-manylinux_2_28_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-    { name = "jackdaw", version = "0.3.0", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-win_amd64.whl" }, marker = "sys_platform == 'win32'" },
+    { name = "jackdaw", version = "0.3.1", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-macosx_10_12_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "jackdaw", version = "0.3.1", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-macosx_11_0_arm64.whl" }, marker = "platform_machine != 'x86_64' and sys_platform != 'linux' and sys_platform != 'win32'" },
+    { name = "jackdaw", version = "0.3.1", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-manylinux_2_28_aarch64.whl" }, marker = "platform_machine != 'x86_64' and sys_platform == 'linux'" },
+    { name = "jackdaw", version = "0.3.1", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-manylinux_2_28_x86_64.whl" }, marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "jackdaw", version = "0.3.1", source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-win_amd64.whl" }, marker = "sys_platform == 'win32'" },
     { name = "joserfc" },
     { name = "numpy" },
     { name = "psycopg", extra = ["binary"] },
@@ -94,12 +94,12 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.120" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "itsdangerous", specifier = ">=2.2" },
-    { name = "jackdaw", marker = "(platform_machine != 'arm64' and platform_machine != 'x86_64' and sys_platform == 'darwin') or (platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')", specifier = "==0.3.0" },
-    { name = "jackdaw", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-macosx_11_0_arm64.whl" },
-    { name = "jackdaw", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-macosx_10_12_x86_64.whl" },
-    { name = "jackdaw", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-manylinux_2_28_aarch64.whl" },
-    { name = "jackdaw", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-manylinux_2_28_x86_64.whl" },
-    { name = "jackdaw", marker = "sys_platform == 'win32'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-win_amd64.whl" },
+    { name = "jackdaw", marker = "(platform_machine != 'arm64' and platform_machine != 'x86_64' and sys_platform == 'darwin') or (platform_machine != 'aarch64' and platform_machine != 'x86_64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')", specifier = "==0.3.1" },
+    { name = "jackdaw", marker = "platform_machine == 'arm64' and sys_platform == 'darwin'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-macosx_11_0_arm64.whl" },
+    { name = "jackdaw", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-macosx_10_12_x86_64.whl" },
+    { name = "jackdaw", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-manylinux_2_28_aarch64.whl" },
+    { name = "jackdaw", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-manylinux_2_28_x86_64.whl" },
+    { name = "jackdaw", marker = "sys_platform == 'win32'", url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-win_amd64.whl" },
     { name = "joserfc", specifier = ">=1.2" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
@@ -441,8 +441,8 @@ wheels = [
 
 [[package]]
 name = "jackdaw"
-version = "0.3.0"
-source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-macosx_10_12_x86_64.whl" }
+version = "0.3.1"
+source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-macosx_10_12_x86_64.whl" }
 resolution-markers = [
     "platform_machine == 'x86_64' and sys_platform == 'darwin'",
 ]
@@ -451,7 +451,7 @@ dependencies = [
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-macosx_10_12_x86_64.whl", hash = "sha256:a2a11bcf0b53d47f8de882f407c25d9ba6595cee91d90ca76c77bcde66166641" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-macosx_10_12_x86_64.whl", hash = "sha256:6cdcc5547c08c8ca8899bf5a7aebf7471fac4f0857a2da36e222933472b53c7a" },
 ]
 
 [package.metadata]
@@ -462,8 +462,8 @@ requires-dist = [
 
 [[package]]
 name = "jackdaw"
-version = "0.3.0"
-source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-macosx_11_0_arm64.whl" }
+version = "0.3.1"
+source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-macosx_11_0_arm64.whl" }
 resolution-markers = [
     "platform_machine == 'arm64' and sys_platform == 'darwin'",
 ]
@@ -472,7 +472,7 @@ dependencies = [
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-macosx_11_0_arm64.whl", hash = "sha256:cec8d3ec73f2d20feb8e0b2e08d5d0f05a36bbb100aa3580aa90df70e1a1651b" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-macosx_11_0_arm64.whl", hash = "sha256:ffe58a40237eea12569ff573f61ca028d9cb9d0970ff5cec1fce332d5d2251e7" },
 ]
 
 [package.metadata]
@@ -483,8 +483,8 @@ requires-dist = [
 
 [[package]]
 name = "jackdaw"
-version = "0.3.0"
-source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-manylinux_2_28_aarch64.whl" }
+version = "0.3.1"
+source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-manylinux_2_28_aarch64.whl" }
 resolution-markers = [
     "platform_machine == 'aarch64' and sys_platform == 'linux'",
 ]
@@ -493,7 +493,7 @@ dependencies = [
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:b0edf350e551a10cc94f6186b9f00ca86524b328ace9382ce6a0031b3c0b3729" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:0cb71a6d64ac7847dd1f94f6537205e0723b59a934a2c04697a759edd6e615bf" },
 ]
 
 [package.metadata]
@@ -504,8 +504,8 @@ requires-dist = [
 
 [[package]]
 name = "jackdaw"
-version = "0.3.0"
-source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-manylinux_2_28_x86_64.whl" }
+version = "0.3.1"
+source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-manylinux_2_28_x86_64.whl" }
 resolution-markers = [
     "platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
@@ -514,7 +514,7 @@ dependencies = [
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:027d461e3a2e2d8f511a6421635086f6f77ea55464933b41c1ba61c8a52bd323" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:7e49b2734a221e4d22b1c5a8eb55e6012bf566e9c3b7fa08f1512d117f47ac93" },
 ]
 
 [package.metadata]
@@ -525,8 +525,8 @@ requires-dist = [
 
 [[package]]
 name = "jackdaw"
-version = "0.3.0"
-source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-win_amd64.whl" }
+version = "0.3.1"
+source = { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-win_amd64.whl" }
 resolution-markers = [
     "sys_platform == 'win32'",
 ]
@@ -535,7 +535,7 @@ dependencies = [
     { name = "numpy" },
 ]
 wheels = [
-    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.0/jackdaw-0.3.0-cp312-abi3-win_amd64.whl", hash = "sha256:6422789d82605dd003ef869d2a2a10fb0034be038fd2fc4e45d63cad16c4f85c" },
+    { url = "https://github.com/TylerFlar/jackdaw-balatro/releases/download/v0.3.1/jackdaw-0.3.1-cp312-abi3-win_amd64.whl", hash = "sha256:7164a7fa1ee4d6e9f4cd783943c62465bef2f131ed10a57a30490c42d2460abd" },
 ]
 
 [package.metadata]

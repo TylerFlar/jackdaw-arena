@@ -16,17 +16,52 @@ from typing import Any, NamedTuple
 
 from sqlalchemy import Connection, text
 
-from arena.engine.live import Outcome, RunSpec
+from arena.engine.live import CorruptTrace, Factored, Outcome, RunSpec, Step
 
 # --- traces ------------------------------------------------------------------------------------
+#
+# A trace is uint16 little-endian words, one step after another. An index (below 0xFFFF; a table
+# holds at most 500) is one word. A factored action is 0xFFFF, then its action type, its entity
+# target, its card count and its cards, with 0xFFFF for a target it doesn't have. Traces from
+# before factored steps hold indices alone, and read the same.
+
+_FACTORED = 0xFFFF
+_NONE = 0xFFFF
 
 
-def pack_index(a: int) -> bytes:
+def pack_step(a: Step) -> bytes:
+    if isinstance(a, Factored):
+        cards = a.card_target
+        words = [
+            _FACTORED,
+            a.action_type,
+            _NONE if a.entity_target is None else a.entity_target,
+            _NONE if cards is None else len(cards),
+            *(cards or ()),
+        ]
+        return struct.pack(f"<{len(words)}H", *words)
     return struct.pack("<H", a)
 
 
-def unpack_trace(trace: bytes) -> list[int]:
-    return [a for (a,) in struct.iter_unpack("<H", trace)]
+def unpack_trace(trace: bytes) -> list[Step]:
+    words = [w for (w,) in struct.iter_unpack("<H", trace)]
+    out: list[Step] = []
+    i = 0
+    while i < len(words):
+        if words[i] != _FACTORED:
+            out.append(words[i])
+            i += 1
+            continue
+        if i + 4 > len(words):
+            raise CorruptTrace(f"a factored step cut short at word {i}")
+        t, entity, n = words[i + 1 : i + 4]
+        count = 0 if n == _NONE else n
+        if i + 4 + count > len(words):
+            raise CorruptTrace(f"a factored step's cards cut short at word {i}")
+        cards = None if n == _NONE else tuple(words[i + 4 : i + 4 + count])
+        out.append(Factored(t, None if entity == _NONE else entity, cards))
+        i += 4 + count
+    return out
 
 
 # --- tracks ------------------------------------------------------------------------------------
@@ -349,7 +384,7 @@ class EpisodeRow:
         )  # fmt: skip
 
     @property
-    def indices(self) -> list[int]:
+    def steps(self) -> list[Step]:
         return unpack_trace(bytes(self.trace))
 
 

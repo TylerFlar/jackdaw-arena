@@ -16,6 +16,7 @@ from arena import schemas
 from arena.db import repo
 from arena.engine.catalog import catalog
 from arena.engine.frames import frames
+from arena.engine.live import step_json
 from arena.engine.replay import replay
 from arena.engine.spec import ENGINE_VERSION, SEASON, replayable
 from arena.services.episodes import final_of
@@ -56,7 +57,8 @@ def tape_document(row: repo.EpisodeRow) -> dict[str, Any]:
         "stake": row.stake, "seed": row.seed, "rng_seed": str(row.rng_seed),
         "max_steps": row.max_steps, "end_on_win": row.end_on_win,
         "max_free_moves": row.max_free_moves, "reward": row.reward_kind,
-        "indices": row.indices, "tape": row.tape or [], "attempted": row.attempted,
+        "indices": [step_json(a) for a in row.steps], "tape": row.tape or [],
+        "attempted": row.attempted,
         "final_state_hash": row.final_state_hash, "verified": row.verified,
         "end_reason": row.end_reason,
     }  # fmt: skip

@@ -24,7 +24,16 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from arena.clock import Clock
 from arena.db import repo
 from arena.db.engine import is_serialization_failure
-from arena.engine.live import CorruptTrace, EnvFactory, LiveEpisode, Outcome, StepResult, gym_env
+from arena.engine.live import (
+    CorruptTrace,
+    EnvFactory,
+    LiveEpisode,
+    Outcome,
+    Step,
+    StepResult,
+    gym_env,
+    step_json,
+)
 from arena.engine.spec import ENGINE_VERSION, SEASON, reward_weights
 from arena.services.seeds import SeedSource
 
@@ -41,7 +50,7 @@ class ProtocolError(Exception):
 class StepItem:
     id: uuid.UUID
     t: int
-    action: int
+    action: Step
 
 
 @dataclass(frozen=True)
@@ -71,11 +80,13 @@ def _final(outcome: Outcome, live: LiveEpisode) -> dict[str, Any]:
     }  # fmt: skip
 
 
-def _ok(eid: uuid.UUID, r: StepResult, live: LiveEpisode) -> dict[str, Any]:
+def _ok(eid: uuid.UUID, r: StepResult, live: LiveEpisode, view: bool = False) -> dict[str, Any]:
+    """A step's response. ``r`` is the episode's last step, so the view is of the state after
+    it, which the env still holds."""
     out: dict[str, Any] = {
         "id": eid, "ok": True, "t": r.t, "obs": base64.b64encode(r.obs).decode("ascii"),
         "n_actions": r.n_actions, "reward": r.reward, "terminated": r.terminated,
-        "truncated": r.truncated, "final": None,
+        "truncated": r.truncated, "final": None, "view": live.view() if view else None,
     }  # fmt: skip
     if r.outcome is not None:
         out["final"] = _final(r.outcome, live)
@@ -137,7 +148,7 @@ class EpisodeService:
                 409, "stale_season", f"episode {row.id} is from season {row.season}"
             )
         try:
-            return LiveEpisode.rebuild(row.spec, row.indices, self.env_factory)
+            return LiveEpisode.rebuild(row.spec, row.steps, self.env_factory)
         except CorruptTrace as exc:  # pragma: no cover - an engine change or a damaged row
             raise ProtocolError(
                 500, "corrupt_episode", f"episode {row.id} does not replay: {exc}"
@@ -152,8 +163,10 @@ class EpisodeService:
         keys: Sequence[uuid.UUID],
         reward_kind: str = "sparse",
         weights: dict[str, float] | None = None,
+        view: bool = False,
     ) -> list[dict[str, Any]]:
-        """Start one episode per idempotency key. Keys already used return their episode."""
+        """Start one episode per idempotency key. Keys already used return their episode.
+        ``view``: each running episode's player view too."""
         if not 1 <= len(keys) <= self.limits.max_new:
             raise ProtocolError(422, "bad_request", f"send 1 to {self.limits.max_new} keys")
         if len(set(keys)) != len(keys):
@@ -184,6 +197,7 @@ class EpisodeService:
                     "id": row.id, "key": key, "status": "running", "t": live.t,
                     "obs": base64.b64encode(live.obs).decode("ascii"),
                     "n_actions": live.n_actions, "final": None,
+                    "view": live.view() if view else None,
                 })  # fmt: skip
             return out
 
@@ -255,7 +269,10 @@ class EpisodeService:
 
     # --- step -----------------------------------------------------------------------------------
 
-    def step(self, agent: repo.Agent, items: Sequence[StepItem]) -> list[dict[str, Any]]:
+    def step(
+        self, agent: repo.Agent, items: Sequence[StepItem], view: bool = False
+    ) -> list[dict[str, Any]]:
+        """Take one step in each episode. ``view``: each one's player view after it too."""
         if not 1 <= len(items) <= self.limits.max_batch:
             raise ProtocolError(422, "bad_request", f"send 1 to {self.limits.max_batch} steps")
         if len({it.id for it in items}) != len(items):
@@ -263,7 +280,7 @@ class EpisodeService:
         with self._lock:
             for attempt in range(2):
                 try:
-                    return self._step(agent, items)
+                    return self._step(agent, items, view)
                 except DBAPIError as exc:
                     # The whole batch lost a race (DSQL optimistic concurrency): nothing was
                     # committed. Drop what this process applied and replay from the database.
@@ -273,7 +290,9 @@ class EpisodeService:
                         raise
         raise AssertionError("unreachable")
 
-    def _step(self, agent: repo.Agent, items: Sequence[StepItem]) -> list[dict[str, Any]]:
+    def _step(
+        self, agent: repo.Agent, items: Sequence[StepItem], view: bool
+    ) -> list[dict[str, Any]]:
         def fresh_enough(it: StepItem, live: LiveEpisode | None) -> bool:
             if live is None:
                 return False
@@ -310,17 +329,17 @@ class EpisodeService:
                 if row is None:
                     results[it.id] = _err(it.id, "not_found")
                 elif row.status == "ended":
-                    results[it.id] = self._ended(it, row)
+                    results[it.id] = self._ended(it, row, view)
                 else:
                     results[it.id] = _err(it.id, "ended", row.t)
                 continue
             if it.t == live.t - 1 and live.last is not None and live.last[0] == it.action:
-                results[it.id] = _ok(it.id, live.last[1], live)  # a retry: the same response
+                results[it.id] = _ok(it.id, live.last[1], live, view)  # a retry: the same response
             elif live.outcome is not None:
                 results[it.id] = _err(it.id, "ended", live.t)
             elif it.t != live.t:
                 results[it.id] = _err(it.id, "conflict", live.t)
-            elif not 0 <= it.action < live.n_actions:
+            elif not live.legal(it.action):
                 results[it.id] = _err(it.id, "illegal_action", live.t, n_actions=live.n_actions)
             else:
                 t_before = live.t
@@ -330,20 +349,20 @@ class EpisodeService:
             now = self.clock()
             with self.engine.begin() as conn:
                 steps = [
-                    (it.id, t0, repo.pack_index(it.action))
+                    (it.id, t0, repo.pack_step(it.action))
                     for it, _, r, t0 in pending
                     if r.outcome is None
                 ]
                 advanced = repo.commit_steps(conn, steps, now)
                 for it, live, r, t0 in pending:
                     if r.outcome is not None and repo.end_episode(
-                        conn, it.id, t0, repo.pack_index(it.action), r.outcome, live.tape,
+                        conn, it.id, t0, repo.pack_step(it.action), r.outcome, live.tape,
                         live.engine_error, now,
                     ):  # fmt: skip
                         advanced.add(it.id)
             for it, live, r, _ in pending:
                 if it.id in advanced:
-                    results[it.id] = _ok(it.id, r, live)
+                    results[it.id] = _ok(it.id, r, live, view)
                 else:
                     # Another process moved this episode on first: forget our copy and report
                     # where the database has it.
@@ -353,21 +372,22 @@ class EpisodeService:
                     results[it.id] = _err(it.id, "conflict", current.t if current else None)
         return [results[it.id] for it in items]
 
-    def _ended(self, it: StepItem, row: repo.EpisodeRow) -> dict[str, Any]:
+    def _ended(self, it: StepItem, row: repo.EpisodeRow, view: bool) -> dict[str, Any]:
         """A step for an episode that has ended. If it retries the step that ended it, answer
         with that step's response again, rebuilt by replay."""
-        indices = row.indices
-        if indices and it.t == row.t - 1 and indices[-1] == it.action:
-            live = LiveEpisode.rebuild(row.spec, indices, self.env_factory)
+        steps = row.steps
+        if steps and it.t == row.t - 1 and steps[-1] == it.action:
+            live = LiveEpisode.rebuild(row.spec, steps, self.env_factory)
             if live.last is not None and live.last[1].outcome is not None:
-                ok = _ok(it.id, live.last[1], live)
+                ok = _ok(it.id, live.last[1], live, view)
                 ok["final"] = final_of(row)
                 return ok
         return _err(it.id, "ended", row.t, final=final_of(row))
 
     # --- read, forfeit, janitor -----------------------------------------------------------------
 
-    def get(self, agent: repo.Agent, eid: uuid.UUID) -> dict[str, Any]:
+    def get(self, agent: repo.Agent, eid: uuid.UUID, view: bool = False) -> dict[str, Any]:
+        """A running episode's state (``view``: and its player view), or how it ended."""
         with self.engine.connect() as conn:
             rows = repo.episodes_by_ids(conn, [eid], agent.id)
         if not rows:
@@ -384,12 +404,12 @@ class EpisodeService:
             last = None
             if live.last is not None:
                 a, r = live.last
-                last = {"t": r.t, "action": a, "reward": r.reward, "terminated": r.terminated,
-                        "truncated": r.truncated}  # fmt: skip
+                last = {"t": r.t, "action": step_json(a), "reward": r.reward,
+                        "terminated": r.terminated, "truncated": r.truncated}  # fmt: skip
             return {
                 "id": row.id, "key": row.client_key, "status": "running", "t": live.t,
                 "obs": base64.b64encode(live.obs).decode("ascii"), "n_actions": live.n_actions,
-                "last": last, "final": None,
+                "last": last, "final": None, "view": live.view() if view else None,
             }  # fmt: skip
 
     def live(self, agent: repo.Agent, eid: uuid.UUID) -> LiveEpisode:
