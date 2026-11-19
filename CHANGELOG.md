@@ -6,6 +6,8 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+## [0.2.1] - 2026-11-19
+
 ### Added
 - **Factored actions.** A step's `action` is an index into the step's action table or, now, a factored action `{action_type, entity_target, card_target}`: any action the episode's env offers, including the ones its sampled table leaves out. With 8 hand cards a table holds 200 of the 218 plays and of the 218 discards, and the sampler's seed stays secret until the episode ends, so an agent that decides on actions could neither tell which index stood for its play nor reach the 18 left out (#18). An action the env doesn't offer is an `illegal_action` and changes nothing. A factored step is the step its index would take, the next table is drawn as after it, and the episode rebuilds, replays and verifies as before; its tape document lists the step as it was given. In the client: `ArenaEnv.step_factored(action)`, and `evaluate()` choosers may return factored actions.
 - **The player view.** `view: true` on `POST /api/v1/episodes` and `POST /api/v1/step` (`?view=true` on `GET /api/v1/episodes/{id}`) adds each episode's `view`: jackdaw's player view (`jackdaw.player_view/1`), what a player sees as structured data. That is every card, past the observation's 8 hand cards and 5 jokers, face-down cards by id and place only, the deck as the deck view shows it, and the last hand's scoring events. Its card ids are keyed from the secret sampler seed. In the client: `ArenaEnv(view=True)`, `ArenaEnv.player_view()`, and `evaluate(..., view=True)`.
