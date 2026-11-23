@@ -354,3 +354,92 @@ def test_evaluate_passes_factored_actions_and_views(client, server):
     assert len(result.results) == 2
     assert all(isinstance(a, dict) for a in server.actions)
     assert seen and all(v is not None for v in seen)
+
+
+# --- view_game(): a jackdaw Game built from the view ---------------------------------------------
+
+
+def fake_tracker(monkeypatch) -> list[tuple]:
+    """A stand-in jackdaw.core.ViewTracker that records what it's given."""
+    import sys
+    import types
+
+    calls: list[tuple] = []
+
+    class Game:
+        def __init__(self, view: dict) -> None:
+            self.view = view
+
+        def clone(self) -> Game:
+            return self
+
+    class ViewTracker:
+        def update(self, view: dict) -> Game:
+            calls.append(("update", view))
+            return Game(view)
+
+        def step(self, action: object) -> None:
+            calls.append(("step", action))
+
+        def reset(self) -> None:
+            calls.append(("reset",))
+
+    public = types.ModuleType("jackdaw.core")
+    public.ViewTracker = ViewTracker
+    package = types.ModuleType("jackdaw")
+    package.core = public
+    monkeypatch.setitem(sys.modules, "jackdaw", package)
+    monkeypatch.setitem(sys.modules, "jackdaw.core", public)
+    return calls
+
+
+def test_view_game_keeps_a_game_across_the_episode(client, server, monkeypatch):
+    """The game is built before each step it hasn't been for, a factored step steps it, an index
+    can't (the table is the server's), and a new episode starts another."""
+    calls = fake_tracker(monkeypatch)
+    env = ArenaEnv(client)
+    env.reset()
+    assert env.view_game().view == {"t": 0}
+    assert env.view  # every step fetches the view from now on
+    env.step_factored((0, None, (1, 3)))
+    env.step(2)
+    assert env.view_game().view == {"t": 2}
+    played = {"action_type": 0, "entity_target": None, "card_target": [1, 3]}
+    assert calls == [
+        ("update", {"t": 0}),
+        ("step", played),
+        ("update", {"t": 1}),
+        ("update", {"t": 2}),
+    ]
+    with pytest.warns(UserWarning, match="forfeits"):
+        env.reset()
+    assert calls[-1] == ("reset",)
+    env.close()
+
+
+def test_view_game_needs_jackdaw(client, server, monkeypatch):
+    import sys
+
+    monkeypatch.setitem(sys.modules, "jackdaw", None)
+    env = ArenaEnv(client)
+    env.reset()
+    with pytest.raises(ImportError, match="jackdaw 0.3.2"):
+        env.view_game()
+    env.close()
+
+
+def test_evaluate_handles_keep_a_view_game(client, server, monkeypatch):
+    calls = fake_tracker(monkeypatch)
+    games: list[object] = []
+
+    def choose(envs, obs, masks):
+        games.extend(h.view_game() for h in envs)
+        return [{"action_type": 0, "card_target": [0]} for _ in envs]
+
+    evaluate(choose, 1, batch=1, client=client, progress=False, view=True)
+    steps = [c for c in calls if c[0] == "step"]
+    assert games and len(steps) == len(games)
+    assert all(s[1]["action_type"] == 0 for s in steps)
+    with pytest.raises(RuntimeError, match="view=True"):
+        evaluate(lambda envs, o, m: [e.view_game() for e in envs], 1, client=client,
+                 progress=False)  # fmt: skip
