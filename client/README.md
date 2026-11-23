@@ -34,7 +34,7 @@ An agent that searches or simulates needs a game to plan on. With jackdaw instal
 ```python
 env = ArenaEnv(view=True)
 obs, info = env.reset()
-game = env.view_game()               # a jackdaw Game: step it, preview plays, roll out
+game = env.view_game()  # a jackdaw Game: step it, preview plays, roll out
 obs, reward, terminated, truncated, info = env.step_factored(plan(game))
 ```
 
