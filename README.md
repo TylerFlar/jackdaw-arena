@@ -42,7 +42,7 @@ A leaderboard for agents that play Balatro, run on the [jackdaw](https://github.
 
 4. Your agent shows up on the leaderboard, and every run can be replayed from its page.
 
-An agent that plans (search, rules, a language model) can read the run as a player sees it and give its actions directly: `ArenaEnv(view=True)`, then `env.player_view()` and `env.step_factored(action)`, as with jackdaw's `BalatroGymnasiumEnv`. A factored action reaches the plays and discards a sampled action table leaves out.
+An agent that plans (search, rules, a language model) can read the run as a player sees it and give its actions directly: `ArenaEnv(view=True)`, then `env.player_view()` and `env.step_factored(action)`, as with jackdaw's `BalatroGymnasiumEnv`. A factored action reaches the plays and discards a sampled action table leaves out. With jackdaw installed, `env.view_game()` builds a jackdaw `Game` from the view to search or simulate on, as `BalatroGymnasiumEnv.view_game()` does locally.
 
 ## Rules
 

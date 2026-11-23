@@ -56,3 +56,40 @@ def test_evaluate_runs_an_exact_budget_on_the_server(app, agents):
         assert client.me()["used"] == {"red-1": 10} and client.me()["running"] == 0
         tape = client.tape(result.results[0].id)
         assert tape["seed"] == result.results[0].seed
+
+
+def test_view_game_is_the_local_view_game(make_app, agents):
+    """``ArenaEnv.view_game()`` over HTTP builds, from the same views and the same factored
+    actions, exactly the game ``BalatroGymnasiumEnv.view_game()`` builds locally: so an agent
+    that plans on it runs the same code in both places. And that game shows what the view
+    shows."""
+    import json
+
+    from jackdaw import _core
+
+    def shown(view: dict) -> object:
+        # The last hand's scoring events are a record of a hand, not of the state now: the
+        # rebuilt game never played it.
+        view = {**view, "last_play": None}
+        return json.loads(_core.Game._player_view_without_ids(json.dumps(view)))
+
+    seeds = [7, 4_242]
+    app = make_app(seeds=FixedSeeds((str(n), n) for n in seeds))
+    _, token = agents.agent()
+    with TestClient(app):
+        env = ArenaEnv(arena_client(app, token))
+        local = BalatroGymnasiumEnv(adapter_factory=DirectAdapter)
+        for n in seeds:
+            env.reset()
+            local.reset(seed=n)
+            rng = np.random.default_rng(n)
+            for _ in range(60):
+                remote, mine = env.view_game(), local.view_game()
+                assert remote.to_dict() == mine.to_dict()
+                assert remote.view_ids == mine.view_ids
+                assert shown(remote.player_view(1)) == shown(env.player_view())
+                fa = local._action_table[int(rng.choice(np.flatnonzero(local.action_masks())))]
+                _, _, term, trunc, _ = env.step_factored(fa)
+                local.step_factored(fa)
+                if term or trunc:
+                    break
