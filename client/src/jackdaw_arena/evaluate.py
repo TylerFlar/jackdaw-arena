@@ -3,9 +3,9 @@
 The chooser has the signature of ``examples/balatro_sb3.py``'s choosers in the jackdaw repo,
 ``choose(envs, batch_obs, masks) -> actions``, so the same function evaluates locally and
 here. ``model_chooser(MaskablePPO.load(...))`` works unchanged. ``envs`` holds one handle
-per episode (its ``id`` and ``t``, and with ``view=True`` its player ``view``); there is no
-local run to read. An action is an index into the episode's table, or a factored action
-(``jackdaw_arena.client.wire_action``).
+per episode (its ``id`` and ``t``, and with ``view=True`` its player ``view`` and
+``view_game()``); there is no local run to read. An action is an index into the episode's
+table, or a factored action (``jackdaw_arena.client.wire_action``).
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from typing import Any
 import numpy as np
 
 from jackdaw_arena.client import ArenaClient, wire_action
+from jackdaw_arena.view import ViewGame
 
 
 @dataclass
@@ -29,6 +30,17 @@ class Handle:
     obs: dict[str, np.ndarray]
     reward: float = 0.0
     view: dict[str, Any] | None = None
+    _view_game: ViewGame | None = field(default=None, repr=False)
+
+    def view_game(self) -> Any:
+        """The episode as its ``view`` shows it, as a jackdaw ``Game`` to plan on, kept across
+        the episode with the actions chosen for it (as ``ArenaEnv.view_game()``). Needs
+        ``evaluate(..., view=True)`` and jackdaw; choose factored actions."""
+        if self.view is None:
+            raise RuntimeError("view_game() needs the episode's view: evaluate(..., view=True)")
+        if self._view_game is None:
+            self._view_game = ViewGame()
+        return self._view_game.game(self.view)
 
 
 @dataclass(frozen=True)
@@ -157,10 +169,15 @@ def evaluate(
         if isinstance(chosen, np.ndarray):
             chosen = chosen.reshape(-1).tolist()
         actions = [wire_action(a) for a in chosen]
+        for h in handles:
+            if h._view_game is not None:
+                h._view_game.before_step(h.view)
         steps = [(i, active[i].t, a) for i, a in zip(ids, actions, strict=True)]
-        for i, r in zip(ids, client.step(steps, view=view), strict=True):
+        for i, a, r in zip(ids, actions, client.step(steps, view=view), strict=True):
             h = active[i]
             if r["ok"]:
+                if h._view_game is not None:
+                    h._view_game.stepped(a)
                 h.reward += float(r["reward"])
                 if r["final"] is not None:
                     record(i, h, r, r["final"])
@@ -176,6 +193,8 @@ def evaluate(
                 if state["status"] == "running":
                     h.t, h.n_actions = state["t"], state["n_actions"]
                     h.obs, h.view = spec.decode(state["obs"]), state.get("view")
+                    if h._view_game is not None:
+                        h._view_game.reset()  # moved on by steps it never saw
                 else:
                     record(i, h, None, state["final"])
                     del active[i]

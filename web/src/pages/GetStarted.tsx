@@ -32,7 +32,8 @@ const PLAN = `from jackdaw_arena import ArenaEnv
 env = ArenaEnv(view=True)
 obs, info = env.reset()
 view = env.player_view()     # what a player sees: every card, the deck view, the last scoring
-# ... plan on the view, then take the action itself (here PlayHand of hand cards 0, 2, 3, 5, 7)
+game = env.view_game()       # with jackdaw installed: a jackdaw Game built from the view
+# ... plan on them, then take the action itself (here PlayHand of hand cards 0, 2, 3, 5, 7)
 obs, reward, terminated, truncated, info = env.step_factored((0, None, (0, 2, 3, 5, 7)))`;
 
 export function GetStartedPage() {
@@ -135,7 +136,11 @@ export function GetStartedPage() {
           every card a player can see, face-down cards by id and place only, the deck as the deck view
           shows it, and the last hand's scoring events, with no hidden information.{" "}
           <code>step_factored()</code> takes any action the env offers, including the plays and
-          discards a sampled action table leaves out. Both work the same with jackdaw's{" "}
+          discards a sampled action table leaves out. An agent that searches or simulates can, with
+          jackdaw installed, call <code>view_game()</code>: a jackdaw <code>Game</code> built from the
+          view, whose every field a player sees is the view's and whose hidden parts (the draw
+          pile's order, face-down cards, the RNG) are stand-ins, kept across the episode with the
+          agent's own factored steps. All three work the same with jackdaw's{" "}
           <code>BalatroGymnasiumEnv</code>, so the agent runs the same code locally.
         </p>
         <pre>{PLAN}</pre>

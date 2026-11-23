@@ -7,7 +7,8 @@ server: the seed is chosen there (``reset(seed=...)`` is ignored), and every epi
 Resetting or closing in the middle of an episode forfeits it, scored as far as it got.
 
 As with ``BalatroGymnasiumEnv``, ``step_factored(action)`` takes an action instead of an index
-(one the table's sample may have left out), and ``player_view()`` returns what a player sees.
+(one the table's sample may have left out), ``player_view()`` returns what a player sees, and
+with jackdaw installed ``view_game()`` builds a game from it to plan on.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import gymnasium
 import numpy as np
 
 from jackdaw_arena.client import ArenaClient, wire_action
+from jackdaw_arena.view import ViewGame
 
 
 class ArenaEnv(gymnasium.Env):
@@ -49,6 +51,7 @@ class ArenaEnv(gymnasium.Env):
         self._t = 0
         self._n_actions = 0
         self._running = False
+        self._view_game: ViewGame | None = None
 
     def reset(
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
@@ -65,6 +68,8 @@ class ArenaEnv(gymnasium.Env):
             )
             self.client.forfeit(self.episode_id)
         (ep,) = self.client.create(1, self.track, self.reward, self.weights, view=self.view)
+        if self._view_game is not None:
+            self._view_game.reset()
         self.episode_id = ep["id"]
         self._t, self._n_actions, self._running = ep["t"], ep["n_actions"], True
         self._view = ep.get("view")
@@ -96,14 +101,36 @@ class ArenaEnv(gymnasium.Env):
         assert self._view is not None
         return self._view
 
+    def view_game(self) -> Any:
+        """The run as :meth:`player_view` shows it, as a jackdaw ``Game`` to plan on: every
+        field a player sees is the view's, the hidden parts are stand-ins (the draw pile's
+        order, face-down cards, the RNG), and it's kept across the episode with the actions
+        taken, so it knows what they taught and no view lists (the consumables used, the cards
+        played this ante). jackdaw's ``BalatroGymnasiumEnv.view_game()`` builds the same game
+        from the same view, so an agent plans with the same code locally and here. A copy: step
+        it as you like.
+
+        It needs jackdaw installed (0.3.2 or later). From the first call on, every step also
+        fetches the view (as ``view=True`` does), to keep the game. Take factored steps
+        (:meth:`step_factored`): an index leaves no action to step the game with, as the table
+        is the server's, and the next game then builds on the last one as it was."""
+        if self._view_game is None:
+            self._view_game = ViewGame()
+            self.view = True
+        return self._view_game.game(self.player_view())
+
     def _step(
         self, action: int | dict[str, Any]
     ) -> tuple[dict[str, np.ndarray], float, bool, bool, dict[str, Any]]:
         if not self._running or self.episode_id is None:
             raise RuntimeError("call reset() first: the episode has ended")
+        if self._view_game is not None:
+            self._view_game.before_step(self.player_view())
         (r,) = self.client.step([(self.episode_id, self._t, action)], view=self.view)
         if not r["ok"]:
             raise RuntimeError(f"step refused: {r['error']} (t={r.get('t')})")
+        if self._view_game is not None:
+            self._view_game.stepped(action)
         self._t, self._n_actions = r["t"], r["n_actions"]
         self._view = r.get("view")
         info: dict[str, Any] = {"action_mask": None, "arena/episode_id": self.episode_id}

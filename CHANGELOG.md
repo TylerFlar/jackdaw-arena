@@ -6,6 +6,13 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+### Added
+- **A game built from the player view, for agents that search or simulate.** With jackdaw 0.3.2 or later installed, `ArenaEnv.view_game()` returns a jackdaw `Game` whose every field a player sees is the view's, and whose hidden parts (the draw pile's order, face-down cards, the RNG) are stand-ins. It's kept across the episode with the agent's own factored steps, so it also knows what they taught and no view lists: the consumables used, the cards played this ante. It's the game jackdaw's `BalatroGymnasiumEnv.view_game()` builds locally from the same view, so an agent plans with the same code in both places (jackdaw-balatro#66). `evaluate(..., view=True)` handles have it too. The client still doesn't depend on jackdaw; without it, `view_game()` says how to install it.
+- **What a face-down joker still shows.** The player view's cards have `shape`, the size of the four jokers whose card has its own (Half Joker, Photograph, Square Joker, Wee Joker), and `sellable`, whether the sell button is active (not for an eternal joker), face up or down, as in the game; and `current_round.cash_out`, what the Cash Out button pays (jackdaw-balatro#65).
+
+### Changed
+- The engine is jackdaw 0.3.2: the same game as 0.3.1, with the same observations, masks and action tables, plus the view's new fields and the game built from it. It joins season 1, whose ended episodes all replay with it to their recorded final states, so the leaderboard and the budgets carry on; new episodes record 0.3.2 as their release.
+
 ## [0.2.1] - 2026-11-19
 
 ### Added
