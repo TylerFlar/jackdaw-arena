@@ -110,12 +110,15 @@ class ArenaEnv(gymnasium.Env):
         from the same view, so an agent plans with the same code locally and here. A copy: step
         it as you like.
 
-        It needs jackdaw installed (0.3.2 or later). From the first call on, every step also
-        fetches the view (as ``view=True`` does), to keep the game. Take factored steps
-        (:meth:`step_factored`): an index leaves no action to step the game with, as the table
-        is the server's, and the next game then builds on the last one as it was."""
+        It needs jackdaw installed (0.3.2 or later), and plans best with the Arena's own
+        release (``spec.engine_version``), whose actions are the ones the Arena offers: it warns
+        when the installed jackdaw's action space isn't the Arena's. From the first call on,
+        every step also fetches the view (as ``view=True`` does), to keep the game. Take
+        factored steps (:meth:`step_factored`): an index leaves no action to step the game with,
+        as the table is the server's, and the next game then builds on the last one as it
+        was."""
         if self._view_game is None:
-            self._view_game = ViewGame()
+            self._view_game = ViewGame(self.spec)
             self.view = True
         return self._view_game.game(self.player_view())
 
