@@ -67,7 +67,7 @@ def events(event: Event, request: Request) -> dict[str, Any]:
 
         return audit(state.engine, str(params.get("season", SEASON)))
     if event.task == "janitor":
-        return {"ok": True, "ended": state.episodes.janitor(settings.idle_timeout_s)}
+        return {"ok": True, **state.episodes.janitor(settings.idle_timeout_s)}
     if event.task == "house":
         from arena.house import run_house
 

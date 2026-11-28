@@ -82,7 +82,7 @@ def main(argv: list[str] | None = None) -> None:
 
     service = EpisodeService(engine, utcnow, secure_seeds, cache_size=settings.cache_size)
     if args.command == "janitor":
-        print(json.dumps({"ended": service.janitor(settings.idle_timeout_s)}))
+        print(json.dumps(service.janitor(settings.idle_timeout_s)))
     elif args.command == "house":
         from arena.house import run_house
 

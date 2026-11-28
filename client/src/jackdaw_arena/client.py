@@ -48,6 +48,14 @@ def wire_action(action: Any) -> int | dict[str, Any]:
     }
 
 
+def is_void(final: Mapping[str, Any] | None) -> bool:
+    """Whether an episode's ``final`` says it ended void (``end_reason`` ``"release"``): a deploy
+    changed the jackdaw release under it, and the new one would have read its agent's actions
+    differently. A void episode has no result and counts nowhere, and its episode is back in the
+    agent's budget, to play another."""
+    return final is not None and final.get("end_reason") == "release"
+
+
 class ArenaError(Exception):
     def __init__(self, status: int, code: str, message: str) -> None:
         super().__init__(f"{status} {code}: {message}")

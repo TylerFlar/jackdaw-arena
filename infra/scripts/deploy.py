@@ -14,14 +14,18 @@ Every step is safe to rerun, and nothing visitors see changes until step 5:
   2. web    pnpm build
   3. tasks  point arena-tasks at the image and run the migrations (expand/contract: the live
             version keeps working with the new schema). When the jackdaw release changes,
-            replay the season's ended episodes with it (the audit): if any ends differently,
-            arena-tasks goes back to its previous image and the release stops
+            replay the season's ended episodes with it (the audit)
   4. api    point arena-api at the image, publish a version, health-check that version against
             the database
   5. live   move the "live" alias (behind the Function URL) to the new version
   6. site   upload web/dist: hashed assets first (immutable), then index.html (no-cache), and
             invalidate the unhashed files
   7. smoke  check the site serves the new build through CloudFront; if not, move "live" back
+
+When a step from 3 on fails (an audit that finds an episode ending differently, too), arena-tasks
+goes back to its previous image and the release stops. arena-tasks runs the idle janitor, which
+must play the release the API serves: another release would void the idle episodes it can't
+carry on, which the API's release would score. --rollback moves arena-tasks back with the API.
 
 Configuration: the environment, with the names of Terraform's github_variables output (that's
 how GitHub Actions passes them), falling back to `terraform output` for any that are unset:
@@ -186,8 +190,10 @@ def build_web() -> Path:
     return dist
 
 
-def release_api(aws: Aws, cfg: dict[str, str], image_uri: str, sha: str) -> tuple[str, str]:
-    """Migrate, audit, publish and health-check; return (new version, previous live version)."""
+def release_api(aws: Aws, cfg: dict[str, str], image_uri: str, sha: str) -> tuple[str, str, str]:
+    """Migrate, audit, publish and health-check; return (new version, previous live version,
+    the tasks function's previous image). If any of it fails, the tasks function goes back to
+    its previous image."""
     api, tasks = cfg["API_FUNCTION"], cfg["TASKS_FUNCTION"]
     try:
         live_engine = aws.invoke(api, {"task": "health"}, qualifier=ALIAS).get("engine")
@@ -195,28 +201,32 @@ def release_api(aws: Aws, cfg: dict[str, str], image_uri: str, sha: str) -> tupl
         live_engine = None  # an unhealthy live version: audit, and still allow the fix out
     previous_image = aws.lam.get_function(FunctionName=tasks)["Code"]["ImageUri"]
     aws.update_code(tasks, image_uri)
-    migrated = aws.invoke(tasks, {"task": "migrate"})
-    log(f"migrations applied: {migrated['applied'] or 'none pending'}")
-    if migrated.get("engine") != live_engine:
-        log(f"jackdaw {live_engine or '(unknown)'} -> {migrated.get('engine')}: auditing")
-        try:
-            result = aws.invoke(tasks, {"task": "audit"})
-        except DeployError:
-            log("audit failed: putting the tasks function back on its previous image")
-            aws.update_code(tasks, previous_image)
-            raise
-        log(f"audit passed: all {result['checked']} ended episodes of season "
-            f"{result['season']} replay to their recorded final state")  # fmt: skip
+    try:
+        migrated = aws.invoke(tasks, {"task": "migrate"})
+        log(f"migrations applied: {migrated['applied'] or 'none pending'}")
+        if migrated.get("engine") != live_engine:
+            log(f"jackdaw {live_engine or '(unknown)'} -> {migrated.get('engine')}: auditing")
+            try:
+                result = aws.invoke(tasks, {"task": "audit"})
+            except DeployError:
+                log("audit failed")
+                raise
+            log(f"audit passed: all {result['checked']} ended episodes of season "
+                f"{result['season']} replay to their recorded final state")  # fmt: skip
 
-    aws.update_code(api, image_uri)
-    version = aws.lam.publish_version(FunctionName=api, Description=sha)["Version"]
-    aws.lam.get_waiter("published_version_active").wait(FunctionName=api, Qualifier=version)
-    health = aws.invoke(api, {"task": "health"}, qualifier=version)
-    if health.get("build") != sha:
-        raise DeployError(f"version {version} reports build {health.get('build')!r}, not {sha}")
-    log(f"{api}:{version} is healthy")
-    previous = aws.lam.get_alias(FunctionName=api, Name=ALIAS)["FunctionVersion"]
-    return version, previous
+        aws.update_code(api, image_uri)
+        version = aws.lam.publish_version(FunctionName=api, Description=sha)["Version"]
+        aws.lam.get_waiter("published_version_active").wait(FunctionName=api, Qualifier=version)
+        health = aws.invoke(api, {"task": "health"}, qualifier=version)
+        if health.get("build") != sha:
+            raise DeployError(f"version {version} reports build {health.get('build')!r}, not {sha}")
+        log(f"{api}:{version} is healthy")
+        previous = aws.lam.get_alias(FunctionName=api, Name=ALIAS)["FunctionVersion"]
+    except Exception:
+        log("putting the tasks function back on its previous image")
+        aws.update_code(tasks, previous_image)
+        raise
+    return version, previous, previous_image
 
 
 def move_alias(aws: Aws, function: str, version: str) -> None:
@@ -300,6 +310,11 @@ def rollback(aws: Aws, cfg: dict[str, str], version: str | None) -> None:
             raise DeployError(f"no version before {current}")
         version = str(max(older))
     move_alias(aws, api, version)
+    # The tasks function follows: its janitor must play the release the API serves.
+    aws.update_code(
+        cfg["TASKS_FUNCTION"],
+        aws.lam.get_function(FunctionName=api, Qualifier=version)["Code"]["ImageUri"],
+    )
     log("the web build isn't rolled back: redeploy the older commit for that")
 
 
@@ -307,7 +322,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
         "--rollback", nargs="?", const="", metavar="VERSION",
-        help="move the API's live alias back (default: the version before the live one)",
+        help="move the API's live alias back (default: the version before the live one), and "
+        "the tasks function to that version's image",
     )  # fmt: skip
     parser.add_argument(
         "--allow-dirty", action="store_true",
@@ -324,7 +340,7 @@ def main() -> int:
         log(f"releasing {sha}")
         image_uri = image(aws, cfg["ECR_REPOSITORY"], sha)
         dist = build_web()
-        version, previous = release_api(aws, cfg, image_uri, sha)
+        version, previous, tasks_image = release_api(aws, cfg, image_uri, sha)
         move_alias(aws, cfg["API_FUNCTION"], version)
         aws.invoke(cfg["API_FUNCTION"], {"task": "warm"}, qualifier=ALIAS)
         upload_site(aws, cfg, dist, sha)
@@ -332,8 +348,9 @@ def main() -> int:
             smoke(cfg["SITE_URL"], sha)
         except DeployError:
             if previous != version:
-                log(f"moving {ALIAS} back to version {previous}")
+                log(f"moving {ALIAS} back to version {previous}, and the tasks function too")
                 move_alias(aws, cfg["API_FUNCTION"], previous)
+                aws.update_code(cfg["TASKS_FUNCTION"], tasks_image)
             raise
     except (DeployError, subprocess.CalledProcessError) as exc:
         log(f"FAILED: {exc}")

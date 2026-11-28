@@ -371,8 +371,15 @@ class EpisodeRow:
     tape: list[Any] | None
     final_state_hash: str | None
     verified: bool | None
-    engine_error: str | None
+    engine_error: str | None  # for operators: what the engine raised, or why it was voided
     engine_version: str | None  # the jackdaw release that recorded it (null: the season's first)
+    last_engine_version: str | None  # the release that took its last step (null: engine_version)
+    state_digest: str | None  # what its agent saw after that step (``view_digest``)
+
+    @property
+    def played_by(self) -> str | None:
+        """The jackdaw release that served the episode's current step to its agent."""
+        return self.last_engine_version or self.engine_version
 
     @property
     def spec(self) -> RunSpec:
@@ -392,7 +399,8 @@ _EP_COLS = (
     "id, agent_id, track, client_key, season, action_version, seed, rng_seed, back, stake, "
     "max_steps, end_on_win, max_free_moves, reward_kind, reward_weights, status, t, trace, "
     "created_at, last_step_at, ended_at, end_reason, won, ante_reached, rounds_beaten, refused, "
-    "not_ported, attempted, tape, final_state_hash, verified, engine_error, engine_version"
+    "not_ported, attempted, tape, final_state_hash, verified, engine_error, engine_version, "
+    "last_engine_version, state_digest"
 )
 
 
@@ -463,11 +471,13 @@ def insert_episodes(conn: Connection, rows: Iterable[dict[str, Any]]) -> None:
     conn.execute(
         text(
             "INSERT INTO episodes (id, agent_id, track, client_key, season, engine_version, "
-            "action_version, seed, rng_seed, back, stake, max_steps, end_on_win, max_free_moves, "
-            "reward_kind, reward_weights, status, t, trace, created_at, last_step_at) VALUES "
-            "(:id, :agent_id, :track, :client_key, :season, :engine_version, :action_version, "
-            ":seed, :rng_seed, :back, :stake, :max_steps, :end_on_win, :max_free_moves, "
-            ":reward_kind, CAST(:reward_weights AS jsonb), 'running', 0, :trace, :now, :now)"
+            "last_engine_version, state_digest, action_version, seed, rng_seed, back, stake, "
+            "max_steps, end_on_win, max_free_moves, reward_kind, reward_weights, status, t, "
+            "trace, created_at, last_step_at) VALUES "
+            "(:id, :agent_id, :track, :client_key, :season, :engine_version, :engine_version, "
+            ":state_digest, :action_version, :seed, :rng_seed, :back, :stake, :max_steps, "
+            ":end_on_win, :max_free_moves, :reward_kind, CAST(:reward_weights AS jsonb), "
+            "'running', 0, :trace, :now, :now)"
         ),
         [
             {**r, "reward_weights": json.dumps(r["reward_weights"])
@@ -478,23 +488,30 @@ def insert_episodes(conn: Connection, rows: Iterable[dict[str, Any]]) -> None:
 
 
 def commit_steps(
-    conn: Connection, steps: Sequence[tuple[uuid.UUID, int, bytes]], now: datetime
+    conn: Connection,
+    steps: Sequence[tuple[uuid.UUID, int, bytes, str]],
+    release: str,
+    now: datetime,
 ) -> set[uuid.UUID]:
-    """Advance running episodes by one step each: ``(id, t_before, packed index)``. Returns the
-    ids it advanced; any other was moved on by someone else."""
+    """Advance running episodes by one step each: ``(id, t_before, packed step, digest after
+    it)``, taken by jackdaw ``release``. Returns the ids it advanced; any other was moved on by
+    someone else."""
     if not steps:
         return set()
     rows = conn.execute(
         text(
-            "UPDATE episodes AS e SET t = e.t + 1, trace = e.trace || v.b, last_step_at = :now "
-            "FROM unnest(CAST(:ids AS uuid[]), CAST(:ts AS integer[]), CAST(:bs AS bytea[])) "
-            "AS v(id, t, b) WHERE e.id = v.id AND e.t = v.t AND e.status = 'running' "
-            "RETURNING e.id"
+            "UPDATE episodes AS e SET t = e.t + 1, trace = e.trace || v.b, last_step_at = :now, "
+            "last_engine_version = :release, state_digest = v.d "
+            "FROM unnest(CAST(:ids AS uuid[]), CAST(:ts AS integer[]), CAST(:bs AS bytea[]), "
+            "CAST(:ds AS text[])) AS v(id, t, b, d) "
+            "WHERE e.id = v.id AND e.t = v.t AND e.status = 'running' RETURNING e.id"
         ),
         {
             "ids": [s[0] for s in steps],
             "ts": [s[1] for s in steps],
             "bs": [s[2] for s in steps],
+            "ds": [s[3] for s in steps],
+            "release": release,
             "now": now,
         },
     )
@@ -509,10 +526,11 @@ def end_episode(
     outcome: Outcome,
     tape: Sequence[str],
     engine_error: str | None,
+    release: str,
     now: datetime,
 ) -> bool:
-    """End a running episode, taking its final step (``step``) if it has one. False if someone
-    else moved it on first."""
+    """End a running episode, taking its final step (``step``) if it has one, as jackdaw
+    ``release`` scored it. False if someone else moved it on first."""
     advance = "t = t + 1, trace = trace || :b, " if step is not None else ""
     result = conn.execute(
         text(
@@ -520,7 +538,8 @@ def end_episode(
             "end_reason = :reason, won = :won, ante_reached = :ante, rounds_beaten = :rounds, "
             "refused = :refused, not_ported = :not_ported, attempted = CAST(:attempted AS jsonb), "
             "tape = CAST(:tape AS jsonb), final_state_hash = :hash, verified = :verified, "
-            "engine_error = :error WHERE id = :id AND t = :t AND status = 'running'"
+            "engine_error = :error, last_engine_version = :release "
+            "WHERE id = :id AND t = :t AND status = 'running'"
         ),
         {
             "b": step, "now": now, "reason": outcome.end_reason, "won": outcome.won,
@@ -528,10 +547,36 @@ def end_episode(
             "refused": outcome.refused, "not_ported": outcome.not_ported,
             "attempted": json.dumps(outcome.attempted) if outcome.attempted is not None else None,
             "tape": "[" + ",".join(tape) + "]", "hash": outcome.final_state_hash,
-            "verified": outcome.verified, "error": engine_error, "id": episode_id, "t": t_before,
+            "verified": outcome.verified, "error": engine_error, "release": release,
+            "id": episode_id, "t": t_before,
         },
     )  # fmt: skip
     return result.rowcount > 0
+
+
+def void_episode(conn: Connection, row: EpisodeRow, why: str, now: datetime) -> bool:
+    """Void a running episode that the release serving now can't continue as it was played (see
+    ``EpisodeService``): it ends without a result, and so leaves every board, listing and audit
+    (they read ``status = 'ended'``), and its episode goes back to the agent's budget. ``why``
+    is kept for operators. False if someone else moved it on first."""
+    voided = conn.execute(
+        text(
+            "UPDATE episodes SET status = 'void', end_reason = 'release', ended_at = :now, "
+            "last_step_at = :now, engine_error = :why "
+            "WHERE id = :id AND t = :t AND status = 'running'"
+        ),
+        {"now": now, "why": why[:500], "id": row.id, "t": row.t},
+    ).rowcount
+    if not voided:
+        return False
+    conn.execute(
+        text(
+            "UPDATE quotas SET used = used - 1 WHERE agent_id = :a AND track = :tr "
+            "AND season = :s AND used > 0"
+        ),
+        {"a": row.agent_id, "tr": row.track, "s": row.season},
+    )
+    return True
 
 
 def running_of(conn: Connection, agent_id: uuid.UUID) -> list[EpisodeRow]:

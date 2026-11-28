@@ -784,7 +784,10 @@ export interface components {
              * @description base64 of 614 little-endian float32 values
              */
             obs: string | null;
-            /** Status */
+            /**
+             * Status
+             * @description running, ended, or void (see Final.end_reason)
+             */
             status: string;
             /** T */
             t: number;
@@ -819,7 +822,10 @@ export interface components {
              * @description base64 of 614 little-endian float32 values
              */
             obs: string | null;
-            /** Status */
+            /**
+             * Status
+             * @description running, ended, or void (see Final.end_reason)
+             */
             status: string;
             /** T */
             t: number;
@@ -901,7 +907,10 @@ export interface components {
         Final: {
             /** Ante Reached */
             ante_reached: number | null;
-            /** End Reason */
+            /**
+             * End Reason
+             * @description won, lost, max_steps, refused, not_ported, engine_error, forfeit, idle; or release: void, as the jackdaw release now serving would have read the episode's actions differently. A void episode has no result (null), counts nowhere, and went back to the agent's budget
+             */
             end_reason: string;
             /** Final State Hash */
             final_state_hash: string | null;
