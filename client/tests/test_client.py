@@ -50,6 +50,8 @@ class Server:
         self.length, self.episodes, self.created, self.forfeited = length, {}, [], []
         self.running_ids: list[str] = []
         self.actions: list[object] = []
+        self.void_next = 0  # how many of the next episodes a deploy voids at their second step
+        self.void: set[str] = set()
         mock.get(f"{URL}/api/v1/spec").respond(json=SPEC)
         mock.post(f"{URL}/api/v1/episodes").mock(side_effect=self.create)
         mock.post(f"{URL}/api/v1/step").mock(side_effect=self.step)
@@ -67,6 +69,9 @@ class Server:
         for k in body["keys"]:
             self.episodes[k] = 0
             self.created.append(k)
+            if self.void_next:
+                self.void_next -= 1
+                self.void.add(k)
             out.append({"id": k, "key": k, "status": "running", "t": 0, "obs": obs_b64(0),
                         "n_actions": 4, "final": None,
                         "view": {"t": 0} if body.get("view") else None})  # fmt: skip
@@ -84,6 +89,13 @@ class Server:
             t = self.episodes[s["id"]]
             a = s["action"]
             assert s["t"] == t and (isinstance(a, dict) or 0 <= a < 4)
+            if s["id"] in self.void and t == 1:
+                final = {**self.final(s["id"]), "end_reason": "release", "won": None,
+                         "ante_reached": None, "rounds_beaten": None, "length": 1,
+                         "final_state_hash": None, "verified": None}  # fmt: skip
+                results.append({"id": s["id"], "ok": False, "error": "ended", "t": 1,
+                                "final": final})  # fmt: skip
+                continue
             self.actions.append(a)
             t += 1
             self.episodes[s["id"]] = t
@@ -169,6 +181,33 @@ def test_evaluate_plays_exactly_the_budget(client, server):
     assert len(result.results) == 7 and len(server.created) == 7
     s = result.summary()
     assert s["episodes"] == 7 and s["blinds_beaten"] == 2 and s["length"] == 3 and s["verified"]
+
+
+def test_evaluate_replaces_a_void_episode(client, server):
+    """A void episode counts nowhere and its episode is back in the budget: another replaces
+    it, and the evaluation still has exactly the episodes asked for."""
+    server.void_next = 2
+    result = evaluate(random_chooser(0), 4, batch=3, client=client, progress=False)
+    assert len(result.results) == 4 and len(server.created) == 6
+    assert sorted(result.voided) == sorted(server.void)
+    assert not {r.id for r in result.results} & server.void
+    assert result.summary()["blinds_beaten"] == 2
+
+
+def test_env_truncates_a_void_episode(client, server):
+    server.void_next = 1
+    env = ArenaEnv(client)
+    obs, _ = env.reset()
+    first = env.episode_id
+    env.step(0)
+    again, reward, term, trunc, info = env.step(0)
+    assert (reward, term, trunc) == (0.0, False, True) and info["arena/void"]
+    assert info["arena/final"]["end_reason"] == "release" and "balatro/won" not in info
+    assert (again["global"] == 1).all() and env.action_masks().sum() == 0
+    with pytest.raises(RuntimeError):
+        env.step(0)
+    env.reset()  # nothing to forfeit
+    assert env.episode_id != first and server.forfeited == []
 
 
 def test_evaluate_adopts_running_episodes(client, server):

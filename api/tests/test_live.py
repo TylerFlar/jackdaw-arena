@@ -21,6 +21,7 @@ from arena.engine.live import (
     gym_env,
     replay_stats,
     verify_tape,
+    view_digest,
 )
 from arena.engine.spec import OBS_LEN, reward_weights
 from arena.services.seeds import ALPHABET, SEED_LENGTH, secure_seeds
@@ -341,3 +342,24 @@ def test_the_player_view():
     other.apply(Factored(2))
     assert [c["front"] for c in other.view()["hand"]] == [c["front"] for c in hand]
     assert [c["id"] for c in other.view()["hand"]] != [c["id"] for c in hand]
+
+
+def test_the_digest_is_what_the_agent_sees():
+    """``view_digest``: the observation and the action each index names, nothing else."""
+    table = [(2, None, None), (0, None, [0, 3]), (11, 1, None), (14, 0, [])]
+    d = view_digest(b"obs", table)
+    assert d == view_digest(b"obs", [list(a) for a in table])
+    assert d != view_digest(b"obs!", table)
+    assert d != view_digest(b"obs", table[::-1])  # the same actions under other indices
+    assert d != view_digest(b"obs", [*table[:1], (0, None, [0, 4]), *table[2:]])
+    assert d != view_digest(b"obs", [*table[:3], (14, 0, None)])  # no cards isn't zero cards
+    assert view_digest(b"ab", [(1, None, None)]) != view_digest(b"a", [(1, None, None)])
+
+    live, again = LiveEpisode.start(test_spec(63)), LiveEpisode.start(test_spec(63))
+    assert live.digest() == again.digest() == view_digest(live.obs, live.env.action_table())
+    live.apply(Factored(2))
+    assert live.digest() != again.digest()
+    again.apply(Factored(2))
+    assert live.digest() == again.digest()
+    rebuilt = LiveEpisode.rebuild(live.spec, live.steps)
+    assert rebuilt.digest() == live.digest()

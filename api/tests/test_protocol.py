@@ -300,7 +300,7 @@ def test_janitor_ends_idle_episodes(app, agents, clock):
         clock.advance(minutes=5)
         step(client, token, (busy["id"], 0, 0))
         clock.advance(minutes=6)
-        assert app.state.episodes.janitor(idle_s=600) == 1
+        assert app.state.episodes.janitor(idle_s=600) == {"ended": 1, "voided": 0}
         r = client.get(f"/api/v1/episodes/{idle['id']}", headers=bearer(token)).json()
         assert r["status"] == "ended" and r["final"]["end_reason"] == "idle"
         assert (

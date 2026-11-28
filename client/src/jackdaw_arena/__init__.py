@@ -7,7 +7,7 @@ result = evaluate(choose, episodes=500)
 print(result.summary())
 """
 
-from jackdaw_arena.client import ArenaClient, ArenaError, find_token, wire_action
+from jackdaw_arena.client import ArenaClient, ArenaError, find_token, is_void, wire_action
 from jackdaw_arena.env import ArenaEnv
 from jackdaw_arena.evaluate import EpisodeResult, Evaluation, evaluate, random_chooser
 from jackdaw_arena.spec import Spec
@@ -23,6 +23,7 @@ __all__ = [
     "Spec",
     "evaluate",
     "find_token",
+    "is_void",
     "random_chooser",
     "wire_action",
 ]

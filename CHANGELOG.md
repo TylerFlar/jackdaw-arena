@@ -6,6 +6,13 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+### Fixed
+- **A deploy no longer carries on an episode the new release would play differently.** A running episode is rebuilt from the actions its agent took, and an index names an action only in its release's action table. A deploy whose jackdaw lists a state's actions differently (as 0.4.0 does wherever an Aura can be used, and at the free-move cap) read the indices taken before it as other actions, and carried the episode on from a state its agent never saw. Now each step records its release and a digest of what the agent saw after it: the observation, and the action each index of the table named. A release that finds another's episode running carries it on only if it rebuilds that step to the same digest, so the agent's next index names the action it chose. Otherwise the episode is **void**: it ends without a result, counts nowhere (on no board, in no listing, in no audit), and its episode goes back to the agent's budget. So does an episode of a season the engine no longer plays, and one another release served before steps had digests. In the protocol, a void episode's status is `void`, and a step answers `ended` with a `final` whose `end_reason` is `release` and whose results are null.
+- The janitor carries on past an episode that won't rebuild, and voids the idle episodes of a past season, which it used to leave running, holding places under the limit of 64 running episodes.
+
+### Added
+- `evaluate()` plays another episode in place of each that ends void, so it still plays exactly the episodes asked for, and lists the void ones in `Evaluation.voided`. `ArenaEnv.step()` returns a void episode's step as truncated, with `arena/void` in its info, instead of raising. `is_void(final)` tells a void end from the others.
+
 ## [0.3.0] - 2026-11-27
 
 ### Changed

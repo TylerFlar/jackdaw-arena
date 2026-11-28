@@ -18,7 +18,7 @@ from typing import Any
 
 import numpy as np
 
-from jackdaw_arena.client import ArenaClient, wire_action
+from jackdaw_arena.client import ArenaClient, is_void, wire_action
 from jackdaw_arena.spec import Spec
 from jackdaw_arena.view import ViewGame
 
@@ -64,6 +64,8 @@ class EpisodeResult:
 @dataclass
 class Evaluation:
     results: list[EpisodeResult] = field(default_factory=list)
+    voided: list[str] = field(default_factory=list)
+    """The episodes that ended void (``is_void``), each replaced by another."""
 
     def summary(self) -> dict[str, float]:
         """The fields ``examples/balatro_sb3.summarize`` reports, plus the SEM. A refused
@@ -114,7 +116,9 @@ def evaluate(
 
     Episodes this agent left running (an interrupted run) are adopted first, so no budget is
     lost. Only as many new episodes are started as are needed, and every started episode is
-    played to its end. ``view``: each handle carries its episode's player view.
+    played to its end. One that ends void, which a deploy can cause, counts nowhere and gives
+    its episode back to the budget: it's listed in ``voided`` and another takes its place.
+    ``view``: each handle carries its episode's player view.
     """
     client = client or ArenaClient()
     spec = client.spec()
@@ -131,6 +135,14 @@ def evaluate(
     to_start = episodes - len(active)
 
     def record(eid: str, h: Handle, step: dict[str, Any] | None, final: dict[str, Any]) -> None:
+        nonlocal to_start
+        if is_void(final):
+            out.voided.append(eid)
+            to_start += 1
+            if progress:
+                print(f"\repisode {eid} ended void (the Arena's release changed): playing "
+                      "another", file=sys.stderr)  # fmt: skip
+            return
         out.results.append(
             EpisodeResult(
                 id=eid,

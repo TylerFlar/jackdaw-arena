@@ -765,6 +765,7 @@
       "title": "Obs"
      },
      "status": {
+      "description": "running, ended, or void (see Final.end_reason)",
       "title": "Status",
       "type": "string"
      },
@@ -837,6 +838,7 @@
       "title": "Obs"
      },
      "status": {
+      "description": "running, ended, or void (see Final.end_reason)",
       "title": "Status",
       "type": "string"
      },
@@ -1042,6 +1044,7 @@
       "title": "Ante Reached"
      },
      "end_reason": {
+      "description": "won, lost, max_steps, refused, not_ported, engine_error, forfeit, idle; or release: void, as the jackdaw release now serving would have read the episode's actions differently. A void episode has no result (null), counts nowhere, and went back to the agent's budget",
       "title": "End Reason",
       "type": "string"
      },
