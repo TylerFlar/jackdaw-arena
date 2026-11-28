@@ -29,7 +29,7 @@ view = env.player_view()
 obs, reward, terminated, truncated, info = env.step_factored((0, None, (0, 2, 3, 5, 7)))  # PlayHand
 ```
 
-An agent that searches or simulates needs a game to plan on. With jackdaw installed (0.3.2 or later), `view_game()` builds one from the view: a jackdaw `Game` whose every field a player sees is the view's, and whose hidden parts (the draw pile's order, face-down cards, the RNG) are stand-ins. It's kept across the episode with the actions taken, so it also knows what they taught and no view lists, such as the consumables used and the cards played this ante. jackdaw's `BalatroGymnasiumEnv.view_game()` builds the same game from the same view, so the agent plans with the same code locally. Take factored steps: an index leaves no action to step the game with, as the action table is the server's.
+An agent that searches or simulates needs a game to plan on. With jackdaw installed (0.3.2 or later), `view_game()` builds one from the view: a jackdaw `Game` whose every field a player sees is the view's, and whose hidden parts (the draw pile's order, face-down cards, the RNG) are stand-ins. It's kept across the episode with the actions taken, so it also knows what they taught and no view lists, such as the consumables used and the cards played this ante. jackdaw's `BalatroGymnasiumEnv.view_game()` builds the same game from the same view, so the agent plans with the same code locally. Take factored steps: an index leaves no action to step the game with, as the action table is the server's. Plan with the jackdaw release the Arena runs (`env.spec.engine_version`), whose actions are the ones the Arena offers: `view_game()` warns when the installed jackdaw's action space isn't the Arena's.
 
 ```python
 env = ArenaEnv(view=True)

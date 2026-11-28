@@ -19,6 +19,7 @@ from typing import Any
 import numpy as np
 
 from jackdaw_arena.client import ArenaClient, wire_action
+from jackdaw_arena.spec import Spec
 from jackdaw_arena.view import ViewGame
 
 
@@ -30,16 +31,18 @@ class Handle:
     obs: dict[str, np.ndarray]
     reward: float = 0.0
     view: dict[str, Any] | None = None
+    spec: Spec | None = field(default=None, repr=False)
     _view_game: ViewGame | None = field(default=None, repr=False)
 
     def view_game(self) -> Any:
         """The episode as its ``view`` shows it, as a jackdaw ``Game`` to plan on, kept across
         the episode with the actions chosen for it (as ``ArenaEnv.view_game()``). Needs
-        ``evaluate(..., view=True)`` and jackdaw; choose factored actions."""
+        ``evaluate(..., view=True)`` and jackdaw, best the Arena's release; choose factored
+        actions."""
         if self.view is None:
             raise RuntimeError("view_game() needs the episode's view: evaluate(..., view=True)")
         if self._view_game is None:
-            self._view_game = ViewGame()
+            self._view_game = ViewGame(self.spec)
         return self._view_game.game(self.view)
 
 
@@ -123,7 +126,7 @@ def evaluate(
         if state["status"] == "running":
             active[r["id"]] = Handle(
                 r["id"], state["t"], state["n_actions"], spec.decode(state["obs"]),
-                view=state.get("view"),
+                view=state.get("view"), spec=spec,
             )  # fmt: skip
     to_start = episodes - len(active)
 
@@ -154,7 +157,7 @@ def evaluate(
                 if ep["status"] == "running":
                     active[ep["id"]] = Handle(
                         ep["id"], ep["t"], ep["n_actions"], spec.decode(ep["obs"]),
-                        view=ep.get("view"),
+                        view=ep.get("view"), spec=spec,
                     )  # fmt: skip
                 elif ep.get("final"):
                     record(ep["id"], Handle(ep["id"], ep["t"], 0, {}), None, ep["final"])
