@@ -6,6 +6,8 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+## [0.3.0] - 2026-11-27
+
 ### Changed
 - The engine is jackdaw 0.4.0: the same game as 0.3.2, with the same observations, and its action space is version 3 (`action_version` in `/api/v1/spec`). Two moves the game allows are now offered:
   - **Aura names its card.** Aura is used on one hand card without an edition: the action table lists it on each such card, from the tray or a Spectral pack, and a factored `UseConsumable` or `PickPackCard` of Aura takes that card as its `card_target`. One without a `card_target` is an `illegal_action` now, as for The Tower. Until now the table listed Aura once, and the engine chose its card (jackdaw-balatro#69).

@@ -1,3 +1,3 @@
 """Jackdaw Arena: hosted, verifiable evaluation for Balatro agents."""
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
