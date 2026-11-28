@@ -32,7 +32,7 @@ from jackdaw import _core
 
 # Exceptions that must never be swallowed. Everything else raised by the engine (including
 # PyO3's PanicException, a BaseException) ends the episode as an engine error.
-_NEVER_CATCH = (KeyboardInterrupt, SystemExit, GeneratorExit, asyncio.CancelledError)
+NEVER_CATCH = (KeyboardInterrupt, SystemExit, GeneratorExit, asyncio.CancelledError)
 
 
 class CorruptTrace(RuntimeError):
@@ -247,7 +247,7 @@ class LiveEpisode:
         try:
             out = env_step(self.env, a)
             obs, reward, term, trunc, n_actions, episode, not_ported, refused = out
-        except _NEVER_CATCH:
+        except NEVER_CATCH:
             raise
         except BaseException as exc:  # noqa: BLE001 - includes PyO3 PanicException
             return self._engine_error(a, parts, tape, exc)
@@ -262,7 +262,7 @@ class LiveEpisode:
                 try:
                     self.shadow.step(tape)
                     self.tape.append(tape)
-                except _NEVER_CATCH:
+                except NEVER_CATCH:
                     raise
                 except BaseException:  # noqa: BLE001
                     self.diverged = True

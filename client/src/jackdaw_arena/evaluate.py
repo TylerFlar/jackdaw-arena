@@ -132,6 +132,8 @@ def evaluate(
                 r["id"], state["t"], state["n_actions"], spec.decode(state["obs"]),
                 view=state.get("view"), spec=spec,
             )  # fmt: skip
+        elif is_void(state.get("final")):
+            out.voided.append(r["id"])  # its place goes to a new episode, as any not adopted
     to_start = episodes - len(active)
 
     def record(eid: str, h: Handle, step: dict[str, Any] | None, final: dict[str, Any]) -> None:
@@ -152,7 +154,9 @@ def evaluate(
                 won=bool(final["won"]),
                 reward=h.reward,
                 length=int(final["length"]),
-                truncated=bool(step["truncated"]) if step else final["end_reason"] != "won",
+                truncated=(
+                    bool(step["truncated"]) if step else final["end_reason"] not in ("won", "lost")
+                ),
                 refused=final.get("refused") is not None,
                 verified=bool(final["verified"]),
                 end_reason=final["end_reason"],

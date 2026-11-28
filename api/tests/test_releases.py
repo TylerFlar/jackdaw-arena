@@ -225,14 +225,108 @@ def test_a_void_episode_gives_its_budget_back(make_app, agents, engine):
         assert fresh["status"] == "running"
 
 
-def test_another_release_answers_a_retried_last_step_from_the_record(app, agents):
-    """Resending the step that ended an episode gets its response replayed, but only from the
-    release that played it; another answers from the record."""
+def test_another_release_replays_a_retried_last_step_only_to_the_recorded_end(app, agents):
+    """Resending the step that ended an episode gets its response replayed by another release
+    when it ends the episode in the state recorded; otherwise the record answers."""
+    _, token = agents.agent()
+    with TestClient(app) as client:
+        a, b = create(client, token, n=2)
+        action_a, last_a = play(client, token, a, np.random.default_rng(5))[-1]
+        action_b, last_b = play(client, token, b, np.random.default_rng(6))[-1]
+        deploy(app)
+        (again,) = step(client, token, (a["id"], last_a["t"] - 1, action_a))
+        assert again == last_a
+        deploy(app, reordered)
+        (again,) = step(client, token, (b["id"], last_b["t"] - 1, action_b))
+        assert again["ok"] is False and again["error"] == "ended"
+        assert again["final"] == last_b["final"]
+
+
+def failing(seed: str, exc: BaseException):
+    """A release whose env can't be built for the episode with ``seed``: an error that isn't a
+    trace that won't replay (a spec it reads otherwise, a step it doesn't know, a panic)."""
+
+    def factory(spec: RunSpec, max_steps: int) -> Any:
+        if spec.seed == seed:
+            raise exc
+        return gym_env(spec, max_steps)
+
+    return factory
+
+
+def test_another_release_that_cant_rebuild_the_episode_at_all_voids_it(app, agents, engine):
     _, token = agents.agent()
     with TestClient(app) as client:
         (ep,) = create(client, token)
-        action, last = play(client, token, ep, np.random.default_rng(5))[-1]
-        deploy(app)
-        (again,) = step(client, token, (ep["id"], last["t"] - 1, action))
-        assert again["ok"] is False and again["error"] == "ended"
-        assert again["final"] == last["final"]
+        step(client, token, (ep["id"], 0, 0))
+        deploy(app, failing(row_of(engine, ep["id"]).seed, ValueError("8 weights, not 9")))
+        got = client.get(f"/api/v1/episodes/{ep['id']}", headers=bearer(token)).json()
+        assert got["status"] == "void" and got["final"]["end_reason"] == "release"
+        assert "ValueError" in (row_of(engine, ep["id"]).engine_error or "")
+
+
+def test_the_janitor_logs_an_episode_its_own_release_cant_rebuild_and_goes_on(
+    app, agents, engine, clock, caplog
+):
+    _, token = agents.agent()
+    with TestClient(app) as client:
+        broken, idle = create(client, token, n=2)
+        for ep in (broken, idle):
+            step(client, token, (ep["id"], 0, 0))
+        clock.advance(minutes=11)
+        deploy(
+            app, failing(row_of(engine, broken["id"]).seed, RuntimeError("boom")), ENGINE_VERSION
+        )
+        assert app.state.episodes.janitor(idle_s=600) == {"ended": 1, "voided": 0}
+        assert row_of(engine, broken["id"]).status == "running"
+        assert row_of(engine, idle["id"]).end_reason == "idle"
+        assert "RuntimeError: boom" in caplog.text
+
+
+def test_the_janitor_leaves_an_episode_whose_agent_came_back(
+    app, agents, engine, clock, monkeypatch
+):
+    """The janitor acts on the step it found idle. A step since means its agent came back: the
+    janitor neither voids nor ends the episode where it is now."""
+    _, token = agents.agent()
+    with TestClient(app) as client:
+        mine, theirs = create(client, token, n=2)
+        for ep in (mine, theirs):
+            step(client, token, (ep["id"], 0, 0))
+        clock.advance(minutes=11)
+        stale = [row_of(engine, ep["id"]) for ep in (mine, theirs)]
+        for ep in (mine, theirs):  # back, after the janitor read the idle episodes
+            step(client, token, (ep["id"], 1, 0))
+        monkeypatch.setattr(repo, "idle_running", lambda conn, before, limit: stale[:1])
+        assert app.state.episodes.janitor(idle_s=600) == {"ended": 0, "voided": 0}
+        deploy(app, reordered)
+        monkeypatch.setattr(repo, "idle_running", lambda conn, before, limit: stale[1:])
+        assert app.state.episodes.janitor(idle_s=600) == {"ended": 0, "voided": 0}
+        for ep in (mine, theirs):
+            row = row_of(engine, ep["id"])
+            assert row.status == "running" and row.t == 2
+
+
+def test_a_void_that_loses_a_race_is_retried(app, agents, engine, monkeypatch):
+    """The void writes the agent's quota row, which its other voids and its creates write too:
+    on DSQL one can lose a race, and is tried again."""
+    import psycopg
+    from sqlalchemy.exc import OperationalError
+
+    agent, token = agents.agent()
+    with TestClient(app) as client:
+        (ep,) = create(client, token)
+        step(client, token, (ep["id"], 0, 0))
+        real, calls = repo.void_episode, []
+
+        def racing(conn: Any, *args: Any) -> bool:
+            calls.append(1)
+            if len(calls) == 1:
+                raise OperationalError("UPDATE", {}, psycopg.errors.SerializationFailure("OC000"))
+            return real(conn, *args)
+
+        monkeypatch.setattr(repo, "void_episode", racing)
+        deploy(app, reordered)
+        got = client.get(f"/api/v1/episodes/{ep['id']}", headers=bearer(token)).json()
+        assert got["status"] == "void" and len(calls) == 2
+        assert used(engine, agent) == 0

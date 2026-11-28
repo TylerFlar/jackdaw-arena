@@ -70,7 +70,14 @@ class ArenaEnv(gymnasium.Env):
                 "resetting mid-episode forfeits it (every Arena episode counts)", stacklevel=2
             )
             self.client.forfeit(self.episode_id)
-        (ep,) = self.client.create(1, self.track, self.reward, self.weights, view=self.view)
+        for _ in range(3):
+            (ep,) = self.client.create(1, self.track, self.reward, self.weights, view=self.view)
+            if ep["status"] == "running":
+                break
+            # Void already (a deploy came between a lost response and its resend): it counts
+            # nowhere, so start another, under a new key.
+        else:
+            raise RuntimeError(f"no running episode: the last came back {ep['status']}")
         if self._view_game is not None:
             self._view_game.reset()
         self.episode_id = ep["id"]
@@ -135,11 +142,15 @@ class ArenaEnv(gymnasium.Env):
             self._view_game.before_step(self.player_view())
         (r,) = self.client.step([(self.episode_id, self._t, action)], view=self.view)
         if not r["ok"]:
-            if r["error"] == "ended" and is_void(r.get("final")):
+            final = r.get("final")
+            if final is None and r["error"] in ("ended", "conflict"):
+                state = self.client.get(self.episode_id)  # a void can come back as either
+                final = state["final"] if state["status"] != "running" else None
+            if is_void(final):
                 # A deploy voided it: the step wasn't taken, and the episode counts nowhere.
                 self._running, self._n_actions, self._view = False, 0, None
                 info = {"action_mask": self.action_masks(), "arena/episode_id": self.episode_id,
-                        "arena/void": True, "arena/final": r["final"]}  # fmt: skip
+                        "arena/void": True, "arena/final": final}  # fmt: skip
                 assert self._obs is not None
                 return self._obs, 0.0, False, True, info
             raise RuntimeError(f"step refused: {r['error']} (t={r.get('t')})")

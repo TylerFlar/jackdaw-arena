@@ -31,8 +31,9 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from arena.clock import Clock
 from arena.db import repo
-from arena.db.engine import is_serialization_failure
+from arena.db.engine import is_serialization_failure, retrying
 from arena.engine.live import (
+    NEVER_CATCH,
     CorruptTrace,
     EnvFactory,
     LiveEpisode,
@@ -164,21 +165,28 @@ class EpisodeService:
         rebuild the step it served to the digest it recorded."""
         if row.season != self.season:
             return f"from season {row.season}, whose game jackdaw {self.release} doesn't play"
-        own = row.played_by == self.release
-        try:
-            live = LiveEpisode.rebuild(row.spec, row.steps, self.env_factory)
-        except CorruptTrace as exc:
-            if own:  # a damaged row: never seen, and nothing a void would fix
+        if row.played_by == self.release:
+            try:
+                return LiveEpisode.rebuild(row.spec, row.steps, self.env_factory)
+            except CorruptTrace as exc:  # a damaged row: never seen, and nothing a void would fix
                 raise ProtocolError(
                     500, "corrupt_episode", f"episode {row.id} does not replay: {exc}"
                 ) from exc
-            return f"jackdaw {self.release} doesn't replay the steps {row.played_by} took: {exc}"
-        if not own and live.digest() != row.state_digest:
+        try:
+            live = LiveEpisode.rebuild(row.spec, row.steps, self.env_factory)
+            if live.digest() == row.state_digest:
+                return live
             return (
                 f"jackdaw {self.release} rebuilds another step than the one {row.played_by} "
                 "served (its observation or its action table)"
             )
-        return live
+        except NEVER_CATCH:
+            raise
+        except BaseException as exc:  # noqa: BLE001 - anything it can't rebuild (PyO3 panics too)
+            return (
+                f"jackdaw {self.release} can't rebuild the steps {row.played_by} took: "
+                f"{type(exc).__name__}: {exc}"
+            )
 
     def _resume(self, row: repo.EpisodeRow) -> tuple[LiveEpisode | None, repo.EpisodeRow]:
         """``row``'s running episode rebuilt, or ``(None, the row now)`` once it isn't running:
@@ -199,8 +207,14 @@ class EpisodeService:
     def _void(self, row: repo.EpisodeRow, why: str) -> bool:
         """Void ``row``'s running episode (``repo.void_episode``). False if it moved on first."""
         self.evict(row.id)
-        with self.engine.begin() as conn:
-            voided = repo.void_episode(conn, row, why, self.clock())
+
+        def void() -> bool:
+            # It writes the agent's quota row too, which its creates and its other voids also
+            # write: after a deploy, a burst of voids can lose races on DSQL.
+            with self.engine.begin() as conn:
+                return repo.void_episode(conn, row, why, self.clock())
+
+        voided = retrying(void)
         if voided:
             log.warning("voided episode %s at t=%d: %s", row.id, row.t, why)
         return voided
@@ -443,14 +457,27 @@ class EpisodeService:
 
     def _ended(self, it: StepItem, row: repo.EpisodeRow, view: bool) -> dict[str, Any]:
         """A step for an episode that is over (ended, or void). If it retries the step that
-        ended it, answer with that step's response again, rebuilt by replay, if this release
-        played that step: another might replay it differently."""
+        ended it, answer with that step's response again, rebuilt by replay: by the release
+        that played it, or by another that ends it in the state recorded."""
         steps = row.steps
-        own = row.status == "ended" and row.played_by == self.release
-        if own and steps and it.t == row.t - 1 and steps[-1] == it.action:
-            live = LiveEpisode.rebuild(row.spec, steps, self.env_factory)
-            if live.last is not None and live.last[1].outcome is not None:
-                ok = _ok(it.id, live.last[1], live, view)
+        if row.status == "ended" and steps and it.t == row.t - 1 and steps[-1] == it.action:
+            own = row.played_by == self.release
+            live: LiveEpisode | None = None
+            try:
+                live = LiveEpisode.rebuild(row.spec, steps, self.env_factory)
+            except NEVER_CATCH:
+                raise
+            except BaseException:  # noqa: BLE001 - another release that can't replay it
+                if own:
+                    raise
+            last = live.last if live is not None else None
+            if (
+                live is not None
+                and last is not None
+                and last[1].outcome is not None
+                and (own or last[1].outcome.final_state_hash == row.final_state_hash)
+            ):
+                ok = _ok(it.id, last[1], live, view)
                 ok["final"] = final_of(row)
                 return ok
         return _err(it.id, "ended", row.t, final=final_of(row))
@@ -526,22 +553,27 @@ class EpisodeService:
             raise ProtocolError(409, "conflict", "the episode kept moving; try again")
 
     def _end(self, row: repo.EpisodeRow, reason: str) -> str | None:
-        """End a running episode without a step (forfeit, idle), or void it when this release
-        can't continue it. The status it's left in; None if it moved on first."""
+        """End a running episode at the step ``row`` holds, without taking one (forfeit, idle),
+        or void it when this release can't continue it. The status this left it in; None if it
+        had moved on, which leaves it alone (a step means its agent came back)."""
         self.evict(row.id)
-        live, row = self._resume(row)
-        if live is None:
-            return row.status
+        live = self._replay(row)
+        if isinstance(live, str):
+            return "void" if self._void(row, live) else None
         outcome = live.end(reason)
-        with self.engine.begin() as conn:
-            ended = repo.end_episode(
-                conn, row.id, row.t, None, outcome, live.tape, None, self.release, self.clock()
-            )
-        return "ended" if ended else None
+
+        def end() -> bool:
+            with self.engine.begin() as conn:
+                return repo.end_episode(
+                    conn, row.id, row.t, None, outcome, live.tape, None, self.release, self.clock()
+                )
+
+        return "ended" if retrying(end) else None
 
     def janitor(self, idle_s: int, limit: int = 200) -> dict[str, int]:
         """End the episodes idle for over ``idle_s`` seconds: forfeit each, or void the ones this
-        release can't continue. Returns how many it ``ended`` and ``voided``."""
+        release can't continue. Returns how many it ``ended`` and ``voided``. One that fails is
+        logged and left running, unless the database failed, which fails the task."""
         from datetime import timedelta
 
         before = self.clock() - timedelta(seconds=idle_s)
@@ -552,8 +584,10 @@ class EpisodeService:
             for row in rows:
                 try:
                     status = self._end(row, "idle")
-                except ProtocolError as exc:  # one that won't rebuild mustn't stop the rest
-                    log.error("janitor: episode %s: %s", row.id, exc.message)
+                except (DBAPIError, *NEVER_CATCH):
+                    raise
+                except BaseException as exc:  # noqa: BLE001 - one mustn't stop the rest
+                    log.error("janitor: episode %s: %s: %s", row.id, type(exc).__name__, exc)
                     continue
                 if status == "ended":
                     done["ended"] += 1
