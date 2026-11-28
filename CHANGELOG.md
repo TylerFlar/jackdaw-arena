@@ -6,6 +6,16 @@ version follows [semantic versioning](https://semver.org); while it is 0.x, a mi
 
 ## Unreleased
 
+### Changed
+- The engine is jackdaw 0.4.0: the same game as 0.3.2, with the same observations, and its action space is version 3 (`action_version` in `/api/v1/spec`). Two moves the game allows are now offered:
+  - **Aura names its card.** Aura is used on one hand card without an edition: the action table lists it on each such card, from the tray or a Spectral pack, and a factored `UseConsumable` or `PickPackCard` of Aura takes that card as its `card_target`. One without a `card_target` is an `illegal_action` now, as for The Tower. Until now the table listed Aura once, and the engine chose its card (jackdaw-balatro#69).
+  - **The free-move cap counts a drag once.** A swap that carries on the card the last swap moved, the same way, is part of its drag and doesn't count again toward `red-1`'s cap of 10 free moves in a row, and the table still offers it at the cap. Any order of a hand can now be reached before a play (jackdaw-balatro#70).
+
+  0.4.0 joins season 1, whose ended episodes all replay with it to their recorded final states, so the leaderboard and the budgets carry on. New episodes record 0.4.0 and action space 3. A policy trained on action space 2 meets table entries it never saw in those states.
+
+### Added
+- `ArenaEnv.view_game()` (and the `evaluate(..., view=True)` handles') warns when the installed jackdaw's action space isn't the Arena's, and names the release to install: an agent that plans with another release may choose actions the Arena doesn't offer.
+
 ## [0.2.2] - 2026-11-22
 
 ### Added

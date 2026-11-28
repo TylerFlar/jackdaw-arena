@@ -428,6 +428,54 @@ def test_view_game_needs_jackdaw(client, server, monkeypatch):
     env.close()
 
 
+def fake_core(monkeypatch, version: str, action_version: int) -> None:
+    """A jackdaw._core with a release's version and action space, next to fake_tracker's."""
+    import sys
+    import types
+
+    core = types.ModuleType("jackdaw._core")
+    core.__version__ = version
+    core.ACTION_VERSION = action_version
+    monkeypatch.setattr(sys.modules["jackdaw"], "_core", core, raising=False)
+    monkeypatch.setitem(sys.modules, "jackdaw._core", core)
+
+
+def test_view_game_warns_on_another_action_space(client, server, monkeypatch):
+    """An agent that plans with a jackdaw whose action space isn't the Arena's may choose actions
+    the Arena doesn't offer (jackdaw 0.4 has Aura name its card): view_game() says so, and names
+    the Arena's release. The scripted server runs jackdaw 0.2.0, action space 2."""
+    fake_tracker(monkeypatch)
+    fake_core(monkeypatch, "0.1.9", 1)
+    env = ArenaEnv(client)
+    env.reset()
+    with pytest.warns(UserWarning, match=r"action space 1, the Arena's \(jackdaw 0\.2\.0\) 2"):
+        env.view_game()
+    env.close()
+
+    games: list[object] = []
+
+    def choose(envs, obs, masks):
+        games.extend(h.view_game() for h in envs)
+        return [{"action_type": 0, "card_target": [0]} for _ in envs]
+
+    with pytest.warns(UserWarning, match=r"--tag v0\.2\.0"):
+        evaluate(choose, 1, batch=1, client=client, progress=False, view=True)
+    assert games
+
+
+def test_view_game_is_quiet_on_the_arenas_action_space(client, server, monkeypatch):
+    import warnings
+
+    fake_tracker(monkeypatch)
+    fake_core(monkeypatch, "0.2.0", 2)
+    env = ArenaEnv(client)
+    env.reset()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        env.view_game()
+    env.close()
+
+
 def test_evaluate_handles_keep_a_view_game(client, server, monkeypatch):
     calls = fake_tracker(monkeypatch)
     games: list[object] = []
