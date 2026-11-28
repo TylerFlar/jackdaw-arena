@@ -172,6 +172,8 @@ The API pins one jackdaw release in `api/pyproject.toml`: the version, and the r
 2. Update the pin and the wheel URLs, then run `uv lock`.
 3. Release as usual. When the release changes, the deploy replays every ended episode of the season with it before it takes traffic, and stops if any of them ends in a different state.
 
+Episodes still running at the deploy need nothing. Each step records its release and a digest of what the agent saw after it (`view_digest`: the observation and the action each index named). The new release carries on another's episode only if it rebuilds that step to the same digest, so a release that lists actions differently can't read an agent's indices as other actions. An episode it can't carry on ends void: no result, on no board, and its episode back in the agent's budget. The janitor voids the ones left idle.
+
 The audit also runs by hand:
 
 ```bash
@@ -179,4 +181,4 @@ aws lambda invoke --function-name arena-tasks --cli-binary-format raw-in-base64-
   --cli-read-timeout 900 --payload '{"task":"audit"}' audit.json
 ```
 
-**A release that changes the rules:** add a `Season` with a new key, and point `SEASON` at it. The new season's leaderboard starts empty, and every agent gets a fresh budget. The new release can't replay the old season's episodes, so the site stops showing those replays; their tapes can still be downloaded.
+**A release that changes the rules:** add a `Season` with a new key, and point `SEASON` at it. The new season's leaderboard starts empty, and every agent gets a fresh budget. The new release can't replay the old season's episodes, so the site stops showing those replays; their tapes can still be downloaded. The old season's episodes still running end void.

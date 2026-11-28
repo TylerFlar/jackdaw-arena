@@ -5,11 +5,19 @@ The database is the source of truth. Every step commits only if the stored ``t``
 so two processes stepping the same episode can't both succeed. A cache entry that disagrees with
 a request is rebuilt from the database, which replays exactly. Responses go out only after the
 commit, so an agent never sees a state the database doesn't have.
+
+A deploy can change the jackdaw release under a running episode, and another release may replay
+its steps differently: an index names an action only in its release's table. Each step records
+its release and the digest of what the agent saw after it, and a release that rebuilds another
+release's step continues the episode only if it rebuilds to the same digest, so the agent's next
+index names the action it chose. An episode it can't continue (that, or one from another season)
+is void: it ends without a result, and goes back to the agent's budget.
 """
 
 from __future__ import annotations
 
 import base64
+import logging
 import threading
 import uuid
 from collections import OrderedDict
@@ -23,12 +31,14 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from arena.clock import Clock
 from arena.db import repo
-from arena.db.engine import is_serialization_failure
+from arena.db.engine import is_serialization_failure, retrying
 from arena.engine.live import (
+    NEVER_CATCH,
     CorruptTrace,
     EnvFactory,
     LiveEpisode,
     Outcome,
+    RunSpec,
     Step,
     StepResult,
     gym_env,
@@ -36,6 +46,8 @@ from arena.engine.live import (
 )
 from arena.engine.spec import ENGINE_VERSION, SEASON, reward_weights
 from arena.services.seeds import SeedSource
+
+log = logging.getLogger("arena.episodes")
 
 
 class ProtocolError(Exception):
@@ -107,7 +119,9 @@ class EpisodeService:
         cache_size: int = 512,
         limits: Limits | None = None,
         season: str = SEASON,
+        release: str = ENGINE_VERSION,
     ) -> None:
+        """``release``: the jackdaw release this service plays as (``ENGINE_VERSION``)."""
         self.engine, self.clock, self.seeds = engine, clock, seeds
         self.env_factory, self.cache_size, self.limits, self.season = (
             env_factory,
@@ -115,6 +129,7 @@ class EpisodeService:
             limits or Limits(),
             season,
         )
+        self.release = release
         # episode id -> (owning agent id, live episode). Lookups check the owner: a cached
         # episode is still only the agent's that started it.
         self._cache: OrderedDict[uuid.UUID, tuple[uuid.UUID, LiveEpisode]] = OrderedDict()
@@ -142,17 +157,67 @@ class EpisodeService:
     def evict(self, eid: uuid.UUID) -> None:
         self._cache.pop(eid, None)
 
-    def _rebuild(self, row: repo.EpisodeRow) -> LiveEpisode:
+    # --- rebuilding -----------------------------------------------------------------------------
+
+    def _replay(self, row: repo.EpisodeRow) -> LiveEpisode | str:
+        """The running episode ``row`` holds, rebuilt from its steps; or, when this release can't
+        continue it as it was played, why not. Its own release replays it exactly; any other must
+        rebuild the step it served to the digest it recorded."""
         if row.season != self.season:
-            raise ProtocolError(
-                409, "stale_season", f"episode {row.id} is from season {row.season}"
-            )
+            return f"from season {row.season}, whose game jackdaw {self.release} doesn't play"
+        if row.played_by == self.release:
+            try:
+                return LiveEpisode.rebuild(row.spec, row.steps, self.env_factory)
+            except CorruptTrace as exc:  # a damaged row: never seen, and nothing a void would fix
+                raise ProtocolError(
+                    500, "corrupt_episode", f"episode {row.id} does not replay: {exc}"
+                ) from exc
         try:
-            return LiveEpisode.rebuild(row.spec, row.steps, self.env_factory)
-        except CorruptTrace as exc:  # pragma: no cover - an engine change or a damaged row
-            raise ProtocolError(
-                500, "corrupt_episode", f"episode {row.id} does not replay: {exc}"
-            ) from exc
+            live = LiveEpisode.rebuild(row.spec, row.steps, self.env_factory)
+            if live.digest() == row.state_digest:
+                return live
+            return (
+                f"jackdaw {self.release} rebuilds another step than the one {row.played_by} "
+                "served (its observation or its action table)"
+            )
+        except NEVER_CATCH:
+            raise
+        except BaseException as exc:  # noqa: BLE001 - anything it can't rebuild (PyO3 panics too)
+            return (
+                f"jackdaw {self.release} can't rebuild the steps {row.played_by} took: "
+                f"{type(exc).__name__}: {exc}"
+            )
+
+    def _resume(self, row: repo.EpisodeRow) -> tuple[LiveEpisode | None, repo.EpisodeRow]:
+        """``row``'s running episode rebuilt, or ``(None, the row now)`` once it isn't running:
+        void, when this release can't continue it, or ended by another process meanwhile."""
+        for _ in range(3):
+            live = self._replay(row)
+            if not isinstance(live, str):
+                return live, row
+            self._void(row, live)
+            with self.engine.connect() as conn:
+                now = repo.get_episode(conn, row.id)
+            assert now is not None
+            if now.status != "running":
+                return None, now
+            row = now  # another process stepped it first: decide again on its new step
+        raise ProtocolError(409, "conflict", "the episode kept moving; try again")
+
+    def _void(self, row: repo.EpisodeRow, why: str) -> bool:
+        """Void ``row``'s running episode (``repo.void_episode``). False if it moved on first."""
+        self.evict(row.id)
+
+        def void() -> bool:
+            # It writes the agent's quota row too, which its creates and its other voids also
+            # write: after a deploy, a burst of voids can lose races on DSQL.
+            with self.engine.begin() as conn:
+                return repo.void_episode(conn, row, why, self.clock())
+
+        voided = retrying(void)
+        if voided:
+            log.warning("voided episode %s at t=%d: %s", row.id, row.t, why)
+        return voided
 
     # --- create ---------------------------------------------------------------------------------
 
@@ -177,22 +242,21 @@ class EpisodeService:
             raise ProtocolError(422, "bad_reward", str(exc)) from None
 
         with self._lock:
-            rows = self._create_rows(agent, track_key, keys, reward_kind, weight_values)
+            rows, started = self._create_rows(agent, track_key, keys, reward_kind, weight_values)
             out = []
             for key in keys:
                 row = rows[key]
-                if row.status != "running":
+                live = None
+                if row.status == "running":
+                    live = self._get(row.id, agent.id) or started.get(row.id)
+                    if live is None:
+                        live, row = self._resume(row)
+                    if live is not None:
+                        self._put(row.id, agent.id, live)
+                if live is None:
                     out.append({"id": row.id, "key": key, "status": row.status, "t": row.t,
                                 "obs": None, "n_actions": 0, "final": final_of(row)})  # fmt: skip
                     continue
-                live = self._get(row.id, agent.id)
-                if live is None:
-                    live = (
-                        LiveEpisode.start(row.spec, self.env_factory)
-                        if row.t == 0
-                        else self._rebuild(row)
-                    )
-                    self._put(row.id, agent.id, live)
                 out.append({
                     "id": row.id, "key": key, "status": "running", "t": live.t,
                     "obs": base64.b64encode(live.obs).decode("ascii"),
@@ -208,8 +272,11 @@ class EpisodeService:
         keys: Sequence[uuid.UUID],
         reward_kind: str,
         weight_values: tuple[float, ...] | None,
-    ) -> dict[uuid.UUID, repo.EpisodeRow]:
+    ) -> tuple[dict[uuid.UUID, repo.EpisodeRow], dict[uuid.UUID, LiveEpisode]]:
+        """The episodes for ``keys`` by key, inserting the new ones, and the new ones started
+        (by id): each new row records the digest of its first step."""
         for attempt in range(3):
+            started: dict[uuid.UUID, LiveEpisode] = {}
             try:
                 with self.engine.begin() as conn:
                     track = repo.get_track(conn, track_key)
@@ -241,10 +308,19 @@ class EpisodeService:
                         fresh = []
                         for k in new:
                             seed, rng_seed = self.seeds()
+                            spec = RunSpec(
+                                back=track.back, stake=track.stake, seed=seed, rng_seed=rng_seed,
+                                max_steps=track.max_steps, end_on_win=track.end_on_win,
+                                max_free_moves=track.max_free_moves, reward_kind=reward_kind,
+                                reward_weights=weight_values,
+                            )  # fmt: skip
+                            eid = uuid.uuid4()
+                            started[eid] = LiveEpisode.start(spec, self.env_factory)
                             fresh.append({
-                                "id": uuid.uuid4(), "agent_id": agent.id, "track": track.key,
+                                "id": eid, "agent_id": agent.id, "track": track.key,
                                 "client_key": k, "season": self.season,
-                                "engine_version": ENGINE_VERSION,
+                                "engine_version": self.release,
+                                "state_digest": started[eid].digest(),
                                 "action_version": ACTION_VERSION, "seed": seed,
                                 "rng_seed": rng_seed, "back": track.back, "stake": track.stake,
                                 "max_steps": track.max_steps, "end_on_win": track.end_on_win,
@@ -256,7 +332,7 @@ class EpisodeService:
                         existing.update(
                             {r.client_key: r for r in repo.episodes_by_keys(conn, agent.id, new)}
                         )
-                    return existing
+                    return existing, started
             except IntegrityError:
                 # A concurrent request used the same key (or, astronomically rarely, the same
                 # seed). Try again: the keys now exist and come back as they are.
@@ -317,8 +393,15 @@ class EpisodeService:
                 self.evict(eid)
                 row = rows.get(eid)
                 if row is not None and row.status == "running":
-                    lives[eid] = self._rebuild(row)
-                    self._put(eid, agent.id, lives[eid])
+                    try:
+                        live, rows[eid] = self._resume(row)
+                    except ProtocolError as exc:
+                        if exc.code != "conflict":
+                            raise
+                        continue  # it kept moving: reported as a conflict below
+                    if live is not None:
+                        lives[eid] = live
+                        self._put(eid, agent.id, live)
 
         results: dict[uuid.UUID, dict[str, Any]] = {}
         pending: list[tuple[StepItem, LiveEpisode, StepResult, int]] = []
@@ -328,10 +411,10 @@ class EpisodeService:
             if live is None:
                 if row is None:
                     results[it.id] = _err(it.id, "not_found")
-                elif row.status == "ended":
-                    results[it.id] = self._ended(it, row, view)
+                elif row.status == "running":
+                    results[it.id] = _err(it.id, "conflict", None)
                 else:
-                    results[it.id] = _err(it.id, "ended", row.t)
+                    results[it.id] = self._ended(it, row, view)
                 continue
             if it.t == live.t - 1 and live.last is not None and live.last[0] == it.action:
                 results[it.id] = _ok(it.id, live.last[1], live, view)  # a retry: the same response
@@ -347,17 +430,17 @@ class EpisodeService:
 
         if pending:
             now = self.clock()
+            steps = [
+                (it.id, t0, repo.pack_step(it.action), live.digest())
+                for it, live, r, t0 in pending
+                if r.outcome is None
+            ]
             with self.engine.begin() as conn:
-                steps = [
-                    (it.id, t0, repo.pack_step(it.action))
-                    for it, _, r, t0 in pending
-                    if r.outcome is None
-                ]
-                advanced = repo.commit_steps(conn, steps, now)
+                advanced = repo.commit_steps(conn, steps, self.release, now)
                 for it, live, r, t0 in pending:
                     if r.outcome is not None and repo.end_episode(
                         conn, it.id, t0, repo.pack_step(it.action), r.outcome, live.tape,
-                        live.engine_error, now,
+                        live.engine_error, self.release, now,
                     ):  # fmt: skip
                         advanced.add(it.id)
             for it, live, r, _ in pending:
@@ -373,13 +456,28 @@ class EpisodeService:
         return [results[it.id] for it in items]
 
     def _ended(self, it: StepItem, row: repo.EpisodeRow, view: bool) -> dict[str, Any]:
-        """A step for an episode that has ended. If it retries the step that ended it, answer
-        with that step's response again, rebuilt by replay."""
+        """A step for an episode that is over (ended, or void). If it retries the step that
+        ended it, answer with that step's response again, rebuilt by replay: by the release
+        that played it, or by another that ends it in the state recorded."""
         steps = row.steps
-        if steps and it.t == row.t - 1 and steps[-1] == it.action:
-            live = LiveEpisode.rebuild(row.spec, steps, self.env_factory)
-            if live.last is not None and live.last[1].outcome is not None:
-                ok = _ok(it.id, live.last[1], live, view)
+        if row.status == "ended" and steps and it.t == row.t - 1 and steps[-1] == it.action:
+            own = row.played_by == self.release
+            live: LiveEpisode | None = None
+            try:
+                live = LiveEpisode.rebuild(row.spec, steps, self.env_factory)
+            except NEVER_CATCH:
+                raise
+            except BaseException:  # noqa: BLE001 - another release that can't replay it
+                if own:
+                    raise
+            last = live.last if live is not None else None
+            if (
+                live is not None
+                and last is not None
+                and last[1].outcome is not None
+                and (own or last[1].outcome.final_state_hash == row.final_state_hash)
+            ):
+                ok = _ok(it.id, last[1], live, view)
                 ok["final"] = final_of(row)
                 return ok
         return _err(it.id, "ended", row.t, final=final_of(row))
@@ -393,14 +491,18 @@ class EpisodeService:
         if not rows:
             raise ProtocolError(404, "not_found", "no such episode for this agent")
         row = rows[0]
-        if row.status != "running":
-            return {"id": row.id, "key": row.client_key, "status": row.status, "t": row.t,
-                    "obs": None, "n_actions": 0, "last": None, "final": final_of(row)}  # fmt: skip
         with self._lock:
-            live = self._get(eid, agent.id)
-            if live is None or live.t != row.t:
-                live = self._rebuild(row)
-                self._put(eid, agent.id, live)
+            live = None
+            if row.status == "running":
+                live = self._get(eid, agent.id)
+                if live is None or live.t != row.t:
+                    live, row = self._resume(row)
+                    if live is not None:
+                        self._put(eid, agent.id, live)
+            if live is None:
+                return {"id": row.id, "key": row.client_key, "status": row.status, "t": row.t,
+                        "obs": None, "n_actions": 0, "last": None,
+                        "final": final_of(row)}  # fmt: skip
             last = None
             if live.last is not None:
                 a, r = live.last
@@ -421,11 +523,12 @@ class EpisodeService:
                 return live
             with self.engine.connect() as conn:
                 rows = repo.episodes_by_ids(conn, [eid], agent.id)
-            if not rows or rows[0].status != "running":
-                raise ProtocolError(404, "not_found", "no running episode for this agent")
-            live = self._rebuild(rows[0])
-            self._put(eid, agent.id, live)
-            return live
+            if rows and rows[0].status == "running":
+                live, _ = self._resume(rows[0])
+                if live is not None:
+                    self._put(eid, agent.id, live)
+                    return live
+            raise ProtocolError(404, "not_found", "no running episode for this agent")
 
     def running(self, agent: repo.Agent) -> list[dict[str, Any]]:
         with self.engine.connect() as conn:
@@ -442,35 +545,52 @@ class EpisodeService:
                 row = rows[0]
                 if row.status != "running":
                     return final_of(row)  # already over: forfeiting is idempotent
-                if self._end(row, "forfeit"):
+                if self._end(row, "forfeit") is not None:
                     with self.engine.connect() as conn:
                         ended = repo.get_episode(conn, eid)
                     assert ended is not None
                     return final_of(ended)
             raise ProtocolError(409, "conflict", "the episode kept moving; try again")
 
-    def _end(self, row: repo.EpisodeRow, reason: str) -> bool:
-        """End a running episode without a step (forfeit, idle). False if it moved on."""
+    def _end(self, row: repo.EpisodeRow, reason: str) -> str | None:
+        """End a running episode at the step ``row`` holds, without taking one (forfeit, idle),
+        or void it when this release can't continue it. The status this left it in; None if it
+        had moved on, which leaves it alone (a step means its agent came back)."""
         self.evict(row.id)
-        live = self._rebuild(row)
+        live = self._replay(row)
+        if isinstance(live, str):
+            return "void" if self._void(row, live) else None
         outcome = live.end(reason)
-        with self.engine.begin() as conn:
-            return repo.end_episode(
-                conn, row.id, row.t, None, outcome, live.tape, None, self.clock()
-            )
 
-    def janitor(self, idle_s: int, limit: int = 200) -> int:
-        """Forfeit episodes idle for over ``idle_s`` seconds; returns how many it ended."""
+        def end() -> bool:
+            with self.engine.begin() as conn:
+                return repo.end_episode(
+                    conn, row.id, row.t, None, outcome, live.tape, None, self.release, self.clock()
+                )
+
+        return "ended" if retrying(end) else None
+
+    def janitor(self, idle_s: int, limit: int = 200) -> dict[str, int]:
+        """End the episodes idle for over ``idle_s`` seconds: forfeit each, or void the ones this
+        release can't continue. Returns how many it ``ended`` and ``voided``. One that fails is
+        logged and left running, unless the database failed, which fails the task."""
         from datetime import timedelta
 
         before = self.clock() - timedelta(seconds=idle_s)
         with self.engine.connect() as conn:
             rows = repo.idle_running(conn, before, limit)
-        ended = 0
+        done = {"ended": 0, "voided": 0}
         with self._lock:
             for row in rows:
-                if row.season != self.season:
+                try:
+                    status = self._end(row, "idle")
+                except (DBAPIError, *NEVER_CATCH):
+                    raise
+                except BaseException as exc:  # noqa: BLE001 - one mustn't stop the rest
+                    log.error("janitor: episode %s: %s: %s", row.id, type(exc).__name__, exc)
                     continue
-                if self._end(row, "idle"):
-                    ended += 1
-        return ended
+                if status == "ended":
+                    done["ended"] += 1
+                elif status == "void":
+                    done["voided"] += 1
+        return done

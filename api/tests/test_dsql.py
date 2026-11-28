@@ -130,6 +130,29 @@ def test_an_episode_from_start_to_replay(app_engine):
     assert result["ok"] and result["checked"] == 1, result
 
 
+def test_a_release_that_cant_continue_an_episode_voids_it(app_engine):
+    """The void (the episode and its agent's quota, in one transaction), as the app role."""
+    from arena.db import repo
+    from tests.test_releases import deploy, reordered
+
+    clock = FakeClock()
+    agent, token = Agents(app_engine, clock).agent()
+    app = create_app(_settings("api"), engine=app_engine, clock=clock)
+    with TestClient(app) as c:
+        r = c.post("/api/v1/episodes", json={"track": "red-1", "keys": ["5a1d0e9e-0000-4000-8000-000000000002"]},
+                   headers=bearer(token))  # fmt: skip
+        (ep,) = r.json()["episodes"]
+        for t in (0, 1):
+            if t == 1:
+                deploy(app, reordered)
+            r = c.post("/api/v1/step", json={"steps": [{"id": ep["id"], "t": t, "action": 0}]},
+                       headers=bearer(token))  # fmt: skip
+            (res,) = r.json()["results"]
+        assert res["error"] == "ended" and res["final"]["end_reason"] == "release", res
+    with app_engine.connect() as conn:
+        assert repo.quota_used(conn, agent.id) == {("red-1", SEASON): 0}
+
+
 def test_two_processes_racing_on_one_step(app_engine):
     """Different actions for the same t from two API processes: exactly one wins, and the
     episode stays consistent (DSQL's optimistic concurrency, or the t check, rejects the

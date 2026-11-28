@@ -44,7 +44,12 @@ _VIEW_DESCRIPTION = (
 class Final(BaseModel):
     """How an episode ended. The seeds are revealed once it has."""
 
-    end_reason: str
+    end_reason: str = Field(
+        description="won, lost, max_steps, refused, not_ported, engine_error, forfeit, idle; or "
+        "release: void, as the jackdaw release now serving would have read the episode's "
+        "actions differently. A void episode has no result (null), counts nowhere, and went "
+        "back to the agent's budget"
+    )
     won: bool | None
     ante_reached: int | None
     rounds_beaten: int | None
@@ -64,7 +69,7 @@ class Final(BaseModel):
 class EpisodeState(BaseModel):
     id: uuid.UUID
     key: uuid.UUID
-    status: str
+    status: str = Field(description="running, ended, or void (see Final.end_reason)")
     t: int
     obs: str | None = Field(description="base64 of 614 little-endian float32 values")
     n_actions: int = Field(description="the first n of the Discrete(500) actions are legal")

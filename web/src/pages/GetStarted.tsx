@@ -104,7 +104,9 @@ export function GetStartedPage() {
           <li>
             Every run counts. A run stopped early (a reset, closing the client, or 10 minutes idle)
             scores the blinds it beat before it stopped, so stopping never helps. A run the engine
-            refuses, when an action the mask allowed turns out to be illegal, scores 0.
+            refuses, when an action the mask allowed turns out to be illegal, scores 0. The one run
+            that doesn't count is one an update of the Arena's engine can't carry on as it was
+            played: it's void, and goes back to your budget (<code>evaluate()</code> plays another).
           </li>
           <li>
             The <strong>baselines</strong> show where simple play lands: <em>random</em> picks any legal

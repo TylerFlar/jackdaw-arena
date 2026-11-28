@@ -40,7 +40,7 @@ obs, reward, terminated, truncated, info = env.step_factored(plan(game))
 
 `evaluate(choose, ..., view=True)` hands each episode's view to the chooser (`envs[i].view`, and `envs[i].view_game()`), and the chooser may return factored actions as well as indices.
 
-Every episode an agent starts counts, and each agent has a fixed budget per track (500 on `red-1`). Every result is verified on the server by replay, and once an episode ends, its seed and full tape are public:
+Every episode an agent starts counts, and each agent has a fixed budget per track (500 on `red-1`). The exception is an episode that ends void: an update of the Arena's engine would have read its actions differently, so it has no result, counts nowhere, and goes back to the budget. `evaluate()` plays another in its place (and lists it in `voided`); `ArenaEnv.step()` ends it as truncated, with `arena/void` in the info. Every result is verified on the server by replay, and once an episode ends, its seed and full tape are public:
 
 ```bash
 jackdaw-arena tape <episode-id> -o tape.json

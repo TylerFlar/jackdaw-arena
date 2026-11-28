@@ -11,11 +11,18 @@ Next to the env runs a *shadow* ``Game``, stepped with each action's canonical e
 JSON "tape" lines are what the episode records, and anyone can replay them with
 ``Game.new(back, stake, seed)``. When the episode ends, the shadow must sit on exactly the env's
 state (``state_hash``); that check is the ``verified`` flag.
+
+Indices are what make a rebuild depend on the release: another jackdaw may list the same state's
+actions in another table, and read an old index as another action. So each step also records
+the ``digest`` of what the agent saw after it, which another release must rebuild to before it
+continues the episode.
 """
 
 from __future__ import annotations
 
+import array
 import asyncio
+import hashlib
 import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -25,7 +32,7 @@ from jackdaw import _core
 
 # Exceptions that must never be swallowed. Everything else raised by the engine (including
 # PyO3's PanicException, a BaseException) ends the episode as an engine error.
-_NEVER_CATCH = (KeyboardInterrupt, SystemExit, GeneratorExit, asyncio.CancelledError)
+NEVER_CATCH = (KeyboardInterrupt, SystemExit, GeneratorExit, asyncio.CancelledError)
 
 
 class CorruptTrace(RuntimeError):
@@ -68,6 +75,33 @@ def env_step(env: Any, a: Step) -> Any:
 def step_json(a: Step) -> Any:
     """A step as the protocol writes it: the index, or the factored action's object."""
     return a.as_dict() if isinstance(a, Factored) else a
+
+
+_DIGEST = b"jackdaw-arena/digest/1\0"
+
+
+def view_digest(obs: bytes, table: Sequence[Sequence[Any]]) -> str:
+    """What an agent sees at a step, hashed: the observation, and the action each index of the
+    table names (``GymEnv.action_table()``). Two releases that rebuild a step to the same digest
+    serve it alike, so the index the agent chooses next names the same action in both.
+
+    The game's ``state_hash`` isn't part of it: it costs over ten times what the rest of a step
+    does. Two rebuilds with one digest could only differ in what the observation leaves out, the
+    hidden cards, and the agent's next action means the same in both."""
+    words: list[int] = []
+    for action_type, entity, cards in table:
+        words.append(action_type)
+        words.append(-1 if entity is None else entity)
+        if cards is None:
+            words.append(-1)
+        else:
+            words.append(len(cards))
+            words.extend(cards)
+    h = hashlib.sha256(_DIGEST)
+    h.update(len(obs).to_bytes(4, "little"))
+    h.update(obs)
+    h.update(array.array("i", words).tobytes())  # int32 on every platform jackdaw builds for
+    return h.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -193,6 +227,11 @@ class LiveEpisode:
         a key drawn from the secret sampler seed."""
         return json.loads(self.env.player_view())
 
+    def digest(self) -> str:
+        """``view_digest`` of the step the agent is on: the observation and the action table it
+        chooses from."""
+        return view_digest(self.obs, self.env.action_table())
+
     def apply(self, a: Step) -> StepResult:
         """Take ``a``. The caller checks that it is ``legal``."""
         if self.outcome is not None:
@@ -208,7 +247,7 @@ class LiveEpisode:
         try:
             out = env_step(self.env, a)
             obs, reward, term, trunc, n_actions, episode, not_ported, refused = out
-        except _NEVER_CATCH:
+        except NEVER_CATCH:
             raise
         except BaseException as exc:  # noqa: BLE001 - includes PyO3 PanicException
             return self._engine_error(a, parts, tape, exc)
@@ -223,7 +262,7 @@ class LiveEpisode:
                 try:
                     self.shadow.step(tape)
                     self.tape.append(tape)
-                except _NEVER_CATCH:
+                except NEVER_CATCH:
                     raise
                 except BaseException:  # noqa: BLE001
                     self.diverged = True

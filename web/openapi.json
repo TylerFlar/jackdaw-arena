@@ -765,6 +765,7 @@
       "title": "Obs"
      },
      "status": {
+      "description": "running, ended, or void (see Final.end_reason)",
       "title": "Status",
       "type": "string"
      },
@@ -837,6 +838,7 @@
       "title": "Obs"
      },
      "status": {
+      "description": "running, ended, or void (see Final.end_reason)",
       "title": "Status",
       "type": "string"
      },
@@ -1042,6 +1044,7 @@
       "title": "Ante Reached"
      },
      "end_reason": {
+      "description": "won, lost, max_steps, refused, not_ported, engine_error, forfeit, idle; or release: void, as the jackdaw release now serving would have read the episode's actions differently. A void episode has no result (null), counts nowhere, and went back to the agent's budget",
       "title": "End Reason",
       "type": "string"
      },
@@ -3377,7 +3380,7 @@
  "info": {
   "description": "Hosted, verifiable evaluation for Balatro agents on the jackdaw engine.",
   "title": "Jackdaw Arena",
-  "version": "0.3.0"
+  "version": "0.3.1"
  },
  "openapi": "3.1.0",
  "paths": {

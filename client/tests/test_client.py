@@ -50,6 +50,11 @@ class Server:
         self.length, self.episodes, self.created, self.forfeited = length, {}, [], []
         self.running_ids: list[str] = []
         self.actions: list[object] = []
+        self.void_next = 0  # how many of the next episodes a deploy voids at their second step
+        self.void: set[str] = set()
+        self.void_as = "ended"  # how a step on one says so: "ended", or "conflict"
+        self.void_created = 0  # how many of the next creates come back void already
+        self.voided: set[str] = set()  # the episodes void now
         mock.get(f"{URL}/api/v1/spec").respond(json=SPEC)
         mock.post(f"{URL}/api/v1/episodes").mock(side_effect=self.create)
         mock.post(f"{URL}/api/v1/step").mock(side_effect=self.step)
@@ -67,6 +72,15 @@ class Server:
         for k in body["keys"]:
             self.episodes[k] = 0
             self.created.append(k)
+            if self.void_created:
+                self.void_created -= 1
+                self.voided.add(k)
+                out.append({"id": k, "key": k, "status": "void", "t": 0, "obs": None,
+                            "n_actions": 0, "final": self.void_final(k)})  # fmt: skip
+                continue
+            if self.void_next:
+                self.void_next -= 1
+                self.void.add(k)
             out.append({"id": k, "key": k, "status": "running", "t": 0, "obs": obs_b64(0),
                         "n_actions": 4, "final": None,
                         "view": {"t": 0} if body.get("view") else None})  # fmt: skip
@@ -77,6 +91,11 @@ class Server:
                 "length": self.length, "seed": f"SEED-{eid[:4]}", "rng_seed": "7",
                 "final_state_hash": "h", "verified": True}  # fmt: skip
 
+    def void_final(self, eid: str) -> dict:
+        return {**self.final(eid), "end_reason": "release", "won": None, "ante_reached": None,
+                "rounds_beaten": None, "length": self.episodes[eid], "final_state_hash": None,
+                "verified": None}  # fmt: skip
+
     def step(self, request: httpx.Request) -> httpx.Response:
         results = []
         body = json.loads(request.content)
@@ -84,6 +103,14 @@ class Server:
             t = self.episodes[s["id"]]
             a = s["action"]
             assert s["t"] == t and (isinstance(a, dict) or 0 <= a < 4)
+            if s["id"] in self.void and t == 1:
+                self.voided.add(s["id"])
+                if self.void_as == "conflict":  # a process that held it found it gone
+                    results.append({"id": s["id"], "ok": False, "error": "conflict", "t": None})
+                else:
+                    results.append({"id": s["id"], "ok": False, "error": "ended", "t": 1,
+                                    "final": self.void_final(s["id"])})  # fmt: skip
+                continue
             self.actions.append(a)
             t += 1
             self.episodes[s["id"]] = t
@@ -98,6 +125,10 @@ class Server:
     def get(self, request: httpx.Request) -> httpx.Response:
         eid = request.url.path.rsplit("/", 1)[1]
         t = self.episodes[eid]
+        if eid in self.voided:
+            return httpx.Response(200, json={"id": eid, "key": eid, "status": "void", "t": t,
+                                             "obs": None, "n_actions": 0, "last": None,
+                                             "final": self.void_final(eid)})  # fmt: skip
         view = {"t": t} if request.url.params.get("view") == "true" else None
         return httpx.Response(200, json={"id": eid, "key": eid, "status": "running", "t": t,
                                          "obs": obs_b64(t), "n_actions": 4, "final": None,
@@ -169,6 +200,61 @@ def test_evaluate_plays_exactly_the_budget(client, server):
     assert len(result.results) == 7 and len(server.created) == 7
     s = result.summary()
     assert s["episodes"] == 7 and s["blinds_beaten"] == 2 and s["length"] == 3 and s["verified"]
+
+
+def test_evaluate_replaces_a_void_episode(client, server):
+    """A void episode counts nowhere and its episode is back in the budget: another replaces
+    it, and the evaluation still has exactly the episodes asked for."""
+    server.void_next = 2
+    result = evaluate(random_chooser(0), 4, batch=3, client=client, progress=False)
+    assert len(result.results) == 4 and len(server.created) == 6
+    assert sorted(result.voided) == sorted(server.void)
+    assert not {r.id for r in result.results} & server.void
+    assert result.summary()["blinds_beaten"] == 2
+
+
+def test_env_truncates_a_void_episode(client, server):
+    server.void_next = 1
+    env = ArenaEnv(client)
+    obs, _ = env.reset()
+    first = env.episode_id
+    env.step(0)
+    again, reward, term, trunc, info = env.step(0)
+    assert (reward, term, trunc) == (0.0, False, True) and info["arena/void"]
+    assert info["arena/final"]["end_reason"] == "release" and "balatro/won" not in info
+    assert (again["global"] == 1).all() and env.action_masks().sum() == 0
+    with pytest.raises(RuntimeError):
+        env.step(0)
+    env.reset()  # nothing to forfeit
+    assert env.episode_id != first and server.forfeited == []
+
+
+def test_env_truncates_a_void_reported_as_a_conflict(client, server):
+    """A process that still held the episode finds it void, and answers conflict: the env asks
+    the episode, and ends it as void all the same."""
+    server.void_next, server.void_as = 1, "conflict"
+    env = ArenaEnv(client)
+    env.reset()
+    env.step(0)
+    _, reward, term, trunc, info = env.step(0)
+    assert (reward, term, trunc) == (0.0, False, True) and info["arena/void"]
+    assert info["arena/final"]["end_reason"] == "release"
+
+
+def test_env_reset_starts_another_episode_when_one_comes_back_void(client, server):
+    server.void_created = 1
+    env = ArenaEnv(client)
+    obs, info = env.reset()
+    assert len(server.created) == 2 and env.episode_id == server.created[1]
+    assert info["action_mask"].sum() == 4 and (obs["global"] == 0).all()
+
+
+def test_evaluate_lists_a_void_it_finds_adopting(client, server):
+    left = str(uuid.uuid4())
+    server.episodes[left], server.running_ids = 1, [left]
+    server.voided.add(left)
+    result = evaluate(random_chooser(0), 2, client=client, progress=False)
+    assert result.voided == [left] and len(result.results) == 2 and len(server.created) == 2
 
 
 def test_evaluate_adopts_running_episodes(client, server):

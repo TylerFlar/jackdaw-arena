@@ -58,6 +58,30 @@ def test_evaluate_runs_an_exact_budget_on_the_server(app, agents):
         assert tape["seed"] == result.results[0].seed
 
 
+def test_evaluate_replaces_what_a_deploy_voids(make_app, agents):
+    """A deploy mid-evaluation to a release that reads the running episodes' indices as other
+    actions voids them. evaluate() plays others in their place: the results, and the budget
+    spent, are still the episodes asked for."""
+    from tests.test_releases import deploy, reordered
+
+    app = make_app(seeds=FixedSeeds((f"VOIDTEST{i:08d}", i) for i in range(20)))
+    _, token = agents.agent()
+    with TestClient(app):
+        client = arena_client(app, token)
+        pick, calls = random_chooser(2), []
+
+        def choose(envs, obs, masks):
+            calls.append(len(envs))
+            if len(calls) == 3:
+                deploy(app, reordered)
+            return pick(envs, obs, masks)
+
+        result = evaluate(choose, 6, batch=3, client=client, progress=False)
+        assert len(result.results) == 6 and len(result.voided) == 3, result.voided
+        assert result.summary()["verified"] == 1.0
+        assert client.me()["used"] == {"red-1": 6} and client.me()["running"] == 0
+
+
 def test_view_game_is_the_local_view_game(make_app, agents):
     """``ArenaEnv.view_game()`` over HTTP builds, from the same views and the same factored
     actions, exactly the game ``BalatroGymnasiumEnv.view_game()`` builds locally: so an agent
